@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pengecekan Format LK Hasil Pengolahan Muatan Wilkerstat Nonlapangan SE2026</title>
+    <style>
+        /* CSS tetap sama seperti sebelumnya */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #ecf0f1;
+        }
+        
+        .form-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+        }
+        
+        h2 {
+            color: #3498db;
+            margin-bottom: 15px;
+        }
+        
+        .input-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            border: 2px dashed #3498db;
+            border-radius: 5px;
+            background-color: #ecf0f1;
+            cursor: pointer;
+        }
+        
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #bdc3c7;
+            border-radius: 5px;
+        }
+        
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: background-color 0.3s;
+            display: block;
+            margin: 20px auto;
+        }
+        
+        button:hover {
+            background-color: #2980b9;
+        }
+        
+        .result-section {
+            margin-top: 30px;
+            display: none;
+        }
+        
+        .result-box {
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .success {
+            background-color: #d5f4e6;
+            border-left: 5px solid #2ecc71;
+        }
+        
+        .error {
+            background-color: #fadbd8;
+            border-left: 5px solid #e74c3c;
+        }
+        
+        .warning {
+            background-color: #fef9e7;
+            border-left: 5px solid #f39c12;
+        }
+        
+        .result-item {
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        
+        .result-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        th {
+            background-color: #3498db;
+            color: white;
+        }
+        
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        
+        .loading {
+            text-align: center;
+            display: none;
+            margin: 20px 0;
+        }
+        
+        .spinner {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 2s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .instructions {
+            background-color: #e8f4fc;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        
+        .instructions h3 {
+            color: #2980b9;
+            margin-bottom: 10px;
+        }
+        
+        .instructions ul {
+            padding-left: 20px;
+        }
+        
+        .instructions li {
+            margin-bottom: 5px;
+        }
+        
+        .error-details {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #fff;
+            border-radius: 5px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-size: 14px;
+            display: none;
+        }
+        
+        .toggle-details {
+            color: #3498db;
+            cursor: pointer;
+            text-decoration: underline;
+            margin-top: 5px;
+            display: inline-block;
+        }
+
+        .doc-link {
+            color: #3498db;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .doc-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Pengecekan Format LK Hasil Pengolahan Muatan Wilkerstat Nonlapangan SE2026</h1>
+        
+        <div class="instructions">
+            <h3>Petunjuk Penggunaan:</h3>
+            <ul>
+                <li>Upload file LK Hasil Pengolahan Muatan (format Excel .xlsx)</li>
+                <li>Upload file Master SLS 2025_1 (format Excel .xlsx)</li>
+                <li>Masukkan kode kabupaten/kota (contoh: 1101)</li>
+                <li>Klik tombol "Cek Format" untuk memulai pengecekan</li>
+                <li>Hasil pengecekan akan ditampilkan di bagian bawah</li>
+                <li><strong>Dokumentasi Metadata:</strong> <a href="http://s.bps.go.id/metadata_LK_wilkerstatSE2026_nonlap" target="_blank" class="doc-link">Klik di sini untuk melihat dokumentasi metadata lengkap</a></li>
+            </ul>
+        </div>
+        
+        <div class="form-section">
+            <h2>Input Data</h2>
+            
+            <div class="input-group">
+                <label for="lkFile">File LK Hasil Pengolahan Muatan:</label>
+                <input type="file" id="lkFile" accept=".xlsx">
+            </div>
+            
+            <div class="input-group">
+                <label for="masterFile">File Master SLS 2025_1:</label>
+                <input type="file" id="masterFile" accept=".xlsx">
+            </div>
+            
+            <div class="input-group">
+                <label for="kodeKab">Kode Kabupaten/Kota (XXYY):</label>
+                <input type="text" id="kodeKab" placeholder="Contoh: 1101" maxlength="4">
+            </div>
+            
+            <button id="checkButton">Cek Format</button>
+        </div>
+        
+        <div class="loading" id="loadingIndicator">
+            <div class="spinner"></div>
+            <p>Memproses file, harap tunggu...</p>
+        </div>
+        
+        <div class="result-section" id="resultSection">
+            <h2>Hasil Pengecekan</h2>
+            
+            <div class="result-box" id="fileCheckResult">
+                <h3>Pengecekan File</h3>
+                <div id="fileCheckDetails"></div>
+            </div>
+            
+            <div class="result-box" id="variableCheckResult">
+                <h3>Pengecekan Nama Variabel</h3>
+                <div id="variableCheckDetails"></div>
+            </div>
+            
+            <div class="result-box" id="dataTypeCheckResult">
+                <h3>Pengecekan Tipe Data dan Kelengkapan Data</h3>
+                <div id="dataTypeCheckDetails"></div>
+            </div>
+            
+            <div class="result-box" id="anomalyCheckResult">
+                <h3>Pengecekan Anomali Data</h3>
+                <div id="anomalyCheckDetails"></div>
+            </div>
+            
+            <div class="result-box" id="masterCheckResult">
+                <h3>Pengecekan Master Wilayah</h3>
+                <div id="masterCheckDetails"></div>
+            </div>
+            
+            <div id="summaryTable"></div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script>
+        // Metadata variabel yang benar
+        const correctMetadata = [
+            { variable: 'id', label: 'frs id', type: 'integer', required: true },
+            { variable: 'semester', label: 'semester', type: 'character', required: true },
+            { variable: 'idsubsls', label: 'idsubsls 16 digit', type: 'character', required: true, length: 16 },
+            { variable: 'nmsls', label: 'nama sls', type: 'character', required: true },
+            { variable: 'nama_ketua', label: 'nama ketua SLS', type: 'character', required: false },
+            { variable: 'jenis', label: 'jenis SLS', type: 'character', required: true },
+            { variable: 'kdprov', label: 'kode provinsi', type: 'character', required: true, length: 2 },
+            { variable: 'kdkab', label: 'kode kabupaten/kota', type: 'character', required: true, length: 2 },
+            { variable: 'kdkec', label: 'kode kecamatan', type: 'character', required: true, length: 3 },
+            { variable: 'kddesa', label: 'kode desa/kelurahan', type: 'character', required: true, length: 3 },
+            { variable: 'kdsls', label: 'kode sls/nonsls', type: 'character', required: true, length: 4 },
+            { variable: 'kdsubsls', label: 'kode subsls', type: 'character', required: true, length: 2 },
+            { variable: 'klas', label: 'klasifikasi urban rural', type: 'integer', required: true },
+            { variable: 'nmprov', label: 'nama provinsi', type: 'character', required: true },
+            { variable: 'nmkab', label: 'nama kabupaten/kota', type: 'character', required: true },
+            { variable: 'nmkec', label: 'nama kecamatan', type: 'character', required: true },
+            { variable: 'nmdesa', label: 'nama kelurahan/desa', type: 'character', required: true },
+            { variable: 'kk', label: 'jumlah KK', type: 'integer', required: true },
+            { variable: 'btt', label: 'Jumlah BTT', type: 'integer', required: true },
+            { variable: 'bttk', label: 'Jumlah BTT Kosong', type: 'integer', required: true },
+            { variable: 'bku', label: 'Jumlah BKU', type: 'integer', required: true },
+            { variable: 'bbtt_nonusaha', label: 'Jumlah BBTT Non Usaha', type: 'integer', required: true },
+            { variable: 'usaha', label: 'Jumlah Perkiraan Usaha', type: 'integer', required: true },
+            { variable: 'muatan', label: 'Total Muatan', type: 'integer', required: true },
+            { variable: 'nm_ekonomi', label: 'Nama Wilayah Konsentrasi Ekonomi', type: 'character', required: false },
+            { variable: 'shift', label: 'Jumlah Shift', type: 'character', required: false },
+            { variable: 'jam_operasional', label: 'Jam Operasional', type: 'character', required: false },
+            { variable: 'contact_person', label: 'Contact Person', type: 'character', required: false },
+            { variable: 'dominan', label: 'muatan dominan sls', type: 'integer', required: true },
+            { variable: 'berubah_batas', label: 'Apakah terdapat perubahan batas', type: 'integer', required: true }
+        ];
+
+        let masterWilayahData = [];
+
+        document.getElementById('checkButton').addEventListener('click', function() {
+            const lkFile = document.getElementById('lkFile').files[0];
+            const masterFile = document.getElementById('masterFile').files[0];
+            const kodeKab = document.getElementById('kodeKab').value;
+            
+            if (!lkFile || !masterFile || !kodeKab) {
+                alert('Harap lengkapi semua input!');
+                return;
+            }
+            
+            if (kodeKab.length !== 4 || isNaN(kodeKab)) {
+                alert('Kode kabupaten/kota harus berupa 4 digit angka!');
+                return;
+            }
+            
+            // Tampilkan loading indicator
+            document.getElementById('loadingIndicator').style.display = 'block';
+            document.getElementById('resultSection').style.display = 'none';
+            
+            // Proses file master terlebih dahulu
+            processMasterFile(masterFile, lkFile, kodeKab);
+        });
+        
+        function processMasterFile(masterFile, lkFile, kodeKab) {
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    
+                    // Ambil sheet pertama
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    
+                    // Konversi ke JSON
+                    masterWilayahData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                    
+                    // Lanjutkan proses file LK
+                    processLKFile(lkFile, kodeKab);
+                    
+                } catch (error) {
+                    console.error('Error membaca file master:', error);
+                    document.getElementById('loadingIndicator').style.display = 'none';
+                    alert('Terjadi kesalahan saat membaca file master. Pastikan file adalah format Excel yang valid.');
+                }
+            };
+            
+            reader.readAsArrayBuffer(masterFile);
+        }
+        
+        function processLKFile(lkFile, kodeKab) {
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    
+                    // Ambil sheet pertama
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    
+                    // Konversi ke JSON
+                    const lkData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                    
+                    // Sembunyikan loading indicator
+                    document.getElementById('loadingIndicator').style.display = 'none';
+                    
+                    // Tampilkan hasil pengecekan
+                    document.getElementById('resultSection').style.display = 'block';
+                    
+                    // Lakukan pengecekan
+                    checkFileFormat(lkFile, kodeKab);
+                    checkVariables(lkData);
+                    checkDataTypesAndCompleteness(lkData);
+                    checkAnomalies(lkData);
+                    checkMasterWilayah(lkData);
+                    
+                } catch (error) {
+                    console.error('Error membaca file LK:', error);
+                    document.getElementById('loadingIndicator').style.display = 'none';
+                    alert('Terjadi kesalahan saat membaca file LK. Pastikan file adalah format Excel yang valid.');
+                }
+            };
+            
+            reader.readAsArrayBuffer(lkFile);
+        }
+        
+        function checkFileFormat(file, kodeKab) {
+            const fileCheckDetails = document.getElementById('fileCheckDetails');
+            fileCheckDetails.innerHTML = '';
+            
+            // 1. Cek nama file
+            const expectedFileName = `LK Hasil Pengolahan Muatan_Kab ${kodeKab}_result.xlsx`;
+            if (file.name === expectedFileName) {
+                fileCheckDetails.innerHTML += '<div class="result-item success"><div class="result-title">✓ Nama file sesuai</div><div>Nama file: ' + file.name + '</div></div>';
+            } else {
+                fileCheckDetails.innerHTML += '<div class="result-item error"><div class="result-title">✗ Nama file tidak sesuai</div><div>Nama file seharusnya: ' + expectedFileName + '</div><div>Nama file saat ini: ' + file.name + '</div></div>';
+            }
+            
+            // 2. Cek format file
+            if (file.name.endsWith('.xlsx')) {
+                fileCheckDetails.innerHTML += '<div class="result-item success"><div class="result-title">✓ Format file Excel (.xlsx) sesuai</div></div>';
+            } else {
+                fileCheckDetails.innerHTML += '<div class="result-item error"><div class="result-title">✗ Format file tidak sesuai</div><div>File harus berformat Excel (.xlsx)</div></div>';
+            }
+        }
+        
+        function checkVariables(jsonData) {
+            const variableCheckDetails = document.getElementById('variableCheckDetails');
+            variableCheckDetails.innerHTML = '';
+            
+            if (!jsonData || jsonData.length === 0) {
+                variableCheckDetails.innerHTML = '<div class="result-item error"><div class="result-title">✗ File kosong atau tidak valid</div></div>';
+                return;
+            }
+            
+            // Ambil header (baris pertama)
+            const headers = jsonData[0];
+            let errorCount = 0;
+            let successCount = 0;
+            let extraVariables = [];
+            
+            // Cek variabel yang ada di file tapi tidak ada di metadata
+            headers.forEach(header => {
+                const found = correctMetadata.find(metadata => metadata.variable === header);
+                if (!found) {
+                    extraVariables.push(header);
+                    errorCount++;
+                }
+            });
+            
+            // Bandingkan dengan metadata yang benar
+            correctMetadata.forEach(metadata => {
+                const index = headers.indexOf(metadata.variable);
+                let statusClass = '';
+                let statusIcon = '';
+                let message = '';
+                
+                if (index === -1) {
+                    // Variabel tidak ditemukan
+                    statusClass = 'error';
+                    statusIcon = '✗';
+                    message = 'Variabel tidak ditemukan dalam file';
+                    errorCount++;
+                } else {
+                    // Variabel ditemukan
+                    statusClass = 'success';
+                    statusIcon = '✓';
+                    message = `Tipe data: ${metadata.type}`;
+                    successCount++;
+                }
+                
+                variableCheckDetails.innerHTML += `
+                    <div class="result-item ${statusClass}">
+                        <div class="result-title">${statusIcon} ${metadata.variable} - ${metadata.label}</div>
+                        <div>${message}</div>
+                    </div>
+                `;
+            });
+            
+            // Tampilkan variabel tambahan yang tidak ada di metadata
+            if (extraVariables.length > 0) {
+                variableCheckDetails.innerHTML += `
+                    <div class="result-item error">
+                        <div class="result-title">✗ Variabel Tambahan yang Tidak Dikenal</div>
+                        <div>Terdapat ${extraVariables.length} variabel yang tidak ada dalam metadata:</div>
+                        <div class="error-details">${extraVariables.join(', ')}</div>
+                        <span class="toggle-details" onclick="toggleErrorDetails(this)">Tampilkan detail</span>
+                    </div>
+                `;
+            }
+            
+            // Tampilkan ringkasan
+            const totalVariablesInFile = headers.length;
+            const expectedVariables = correctMetadata.length;
+            
+            variableCheckDetails.innerHTML += `
+                <div class="result-item ${errorCount > 0 ? 'error' : 'success'}">
+                    <div class="result-title">Ringkasan Variabel</div>
+                    <div>✓ ${successCount} variabel sesuai, ✗ ${errorCount} error</div>
+                    <div>Jumlah variabel di file: ${totalVariablesInFile}, Seharusnya: ${expectedVariables}</div>
+                    ${totalVariablesInFile !== expectedVariables ? 
+                        `<div class="error">PERINGATAN: Jumlah variabel tidak sesuai! File memiliki ${totalVariablesInFile} variabel, seharusnya ${expectedVariables}</div>` : 
+                        `<div class="success">✓ Jumlah variabel sesuai</div>`
+                    }
+                </div>
+            `;
+        }
+        
+        function checkDataTypesAndCompleteness(jsonData) {
+            const dataTypeCheckDetails = document.getElementById('dataTypeCheckDetails');
+            dataTypeCheckDetails.innerHTML = '';
+            
+            if (!jsonData || jsonData.length < 2) {
+                dataTypeCheckDetails.innerHTML = '<div class="result-item error"><div class="result-title">✗ Tidak ada data untuk dianalisis</div></div>';
+                return;
+            }
+            
+            // Ambil header dan data
+            const headers = jsonData[0];
+            const dataRows = jsonData.slice(1);
+            
+            let totalErrors = 0;
+            let totalWarnings = 0;
+            let errorDetails = {};
+            let warningDetails = {};
+            
+            // Inisialisasi objek error dan warning details
+            correctMetadata.forEach(metadata => {
+                errorDetails[metadata.variable] = [];
+                warningDetails[metadata.variable] = [];
+            });
+            
+            // Cek setiap variabel metadata
+            correctMetadata.forEach(metadata => {
+                const colIndex = headers.indexOf(metadata.variable);
+                
+                // Jika kolom tidak ditemukan, tambahkan error
+                if (colIndex === -1) {
+                    errorDetails[metadata.variable].push(`KOLOM TIDAK DITEMUKAN: Variabel '${metadata.variable}' tidak ada dalam file LK`);
+                    totalErrors++;
+                    return; // Skip pengecekan data untuk variabel ini
+                }
+                
+                // Cek setiap baris data untuk variabel ini
+                dataRows.forEach((row, rowIndex) => {
+                    const rowNum = rowIndex + 2; // +2 karena header di baris 1 dan index mulai dari 0
+                    
+                    if (row.length > colIndex) {
+                        const value = row[colIndex];
+                        
+                        // Cek kelengkapan data
+                        if (value === null || value === undefined || value === '' || value === 'NULL') {
+                            if (metadata.required) {
+                                // Untuk variabel required: error
+                                errorDetails[metadata.variable].push(`Baris ${rowNum}: Data kosong`);
+                                totalErrors++;
+                            } else {
+                                // Untuk variabel optional: warning (khusus nama_ketua)
+                                if (metadata.variable === 'nama_ketua') {
+                                    warningDetails[metadata.variable].push(`Baris ${rowNum}: Data kosong (opsional)`);
+                                    totalWarnings++;
+                                }
+                            }
+                        } else {
+                            // Cek tipe data untuk data yang tidak kosong
+                            if (metadata.type === 'integer') {
+                                if (isNaN(Number(value)) || !Number.isInteger(Number(value))) {
+                                    errorDetails[metadata.variable].push(`Baris ${rowNum}: "${value}" bukan integer`);
+                                    totalErrors++;
+                                }
+                            }
+                            
+                            // Cek khusus untuk idsubsls harus 16 digit
+                            if (metadata.variable === 'idsubsls' && metadata.length) {
+                                const valueStr = value.toString();
+                                if (valueStr.length !== metadata.length || isNaN(valueStr)) {
+                                    errorDetails[metadata.variable].push(`Baris ${rowNum}: "${value}" harus ${metadata.length} digit angka`);
+                                    totalErrors++;
+                                }
+                            }
+                            
+                            // CEK DIGIT KODE WILAYAH - PERBAIKAN BARU
+                            if (metadata.variable === 'kdprov' && metadata.length) {
+                                const valueStr = value.toString();
+                                if (valueStr.length !== metadata.length) {
+                                    errorDetails[metadata.variable].push(`Baris ${rowNum}: "${value}" harus ${metadata.length} digit karakter`);
+                                    totalErrors++;
+                                }
+                            }
+                            
+                            if (metadata.variable === 'kdkab' && metadata.length) {
+                                const valueStr = value.toString();
+                                if (valueStr.length !== metadata.length) {
+                                    errorDetails[metadata.variable].push(`Baris ${rowNum}: "${value}" harus ${metadata.length} digit karakter`);
+                                    totalErrors++;
+                                }
+                            }
+                            
+                            if (metadata.variable === 'kdkec' && metadata.length) {
+                                const valueStr = value.toString();
+                                if (valueStr.length !== metadata.length) {
+                                    errorDetails[metadata.variable].push(`Baris ${rowNum}: "${value}" harus ${metadata.length} digit karakter`);
+                                    totalErrors++;
+                                }
+                            }
+                            
+                            if (metadata.variable === 'kddesa' && metadata.length) {
+                                const valueStr = value.toString();
+                                if (valueStr.length !== metadata.length) {
+                                    errorDetails[metadata.variable].push(`Baris ${rowNum}: "${value}" harus ${metadata.length} digit karakter`);
+                                    totalErrors++;
+                                }
+                            }
+                            
+                            if (metadata.variable === 'kdsls' && metadata.length) {
+                                const valueStr = value.toString();
+                                if (valueStr.length !== metadata.length) {
+                                    errorDetails[metadata.variable].push(`Baris ${rowNum}: "${value}" harus ${metadata.length} digit karakter`);
+                                    totalErrors++;
+                                }
+                            }
+                            
+                            if (metadata.variable === 'kdsubsls' && metadata.length) {
+                                const valueStr = value.toString();
+                                if (valueStr.length !== metadata.length) {
+                                    errorDetails[metadata.variable].push(`Baris ${rowNum}: "${value}" harus ${metadata.length} digit karakter`);
+                                    totalErrors++;
+                                }
+                            }
+                            
+                            // Cek khusus untuk variabel character
+                            if (metadata.type === 'character' && typeof value !== 'string') {
+                                errorDetails[metadata.variable].push(`Baris ${rowNum}: "${value}" bukan karakter/string`);
+                                totalErrors++;
+                            }
+                        }
+                    } else {
+                        // Jika baris tidak memiliki kolom ini (row length pendek)
+                        if (metadata.required) {
+                            errorDetails[metadata.variable].push(`Baris ${rowNum}: Kolom tidak ada dalam baris ini`);
+                            totalErrors++;
+                        }
+                    }
+                });
+            });
+            
+            // Tampilkan hasil pengecekan
+            correctMetadata.forEach(metadata => {
+                const errors = errorDetails[metadata.variable];
+                const warnings = warningDetails[metadata.variable];
+                
+                if (errors.length > 0) {
+                    // Cek jika error karena kolom tidak ditemukan
+                    const isColumnNotFound = errors.some(error => error.includes('KOLOM TIDAK DITEMUKAN'));
+                    
+                    dataTypeCheckDetails.innerHTML += `
+                        <div class="result-item error">
+                            <div class="result-title">✗ ${metadata.variable} - ${metadata.label}</div>
+                            <div>${isColumnNotFound ? 'Kolom tidak ditemukan dalam file' : `Terdapat ${errors.length} error`}</div>
+                            ${errors.length > 0 && !isColumnNotFound ? `
+                                <div class="error-details" style="display: none;">${errors.join('<br>')}</div>
+                                <span class="toggle-details" onclick="toggleErrorDetails(this)">Tampilkan detail</span>
+                            ` : ''}
+                        </div>
+                    `;
+                } else if (warnings.length > 0 && metadata.variable === 'nama_ketua') {
+                    // Khusus untuk nama_ketua yang kosong, tampilkan warning
+                    dataTypeCheckDetails.innerHTML += `
+                        <div class="result-item warning">
+                            <div class="result-title">⚠ ${metadata.variable} - ${metadata.label}</div>
+                            <div>Terdapat ${warnings.length} data kosong (opsional)</div>
+                            <div class="error-details" style="display: none;">${warnings.join('<br>')}</div>
+                            <span class="toggle-details" onclick="toggleErrorDetails(this)">Tampilkan detail</span>
+                        </div>
+                    `;
+                } else {
+                    dataTypeCheckDetails.innerHTML += `
+                        <div class="result-item success">
+                            <div class="result-title">✓ ${metadata.variable} - ${metadata.label}</div>
+                            <div>Data lengkap dan tipe sesuai</div>
+                        </div>
+                    `;
+                }
+            });
+            
+            // Tampilkan ringkasan
+            dataTypeCheckDetails.innerHTML += `
+                <div class="result-item ${totalErrors > 0 ? 'error' : (totalWarnings > 0 ? 'warning' : 'success')}">
+                    <div class="result-title">Ringkasan Tipe Data dan Kelengkapan</div>
+                    <div>Total error: ${totalErrors}, Total warning: ${totalWarnings}</div>
+                </div>
+            `;
+        }
+        
+        function checkAnomalies(jsonData) {
+            const anomalyCheckDetails = document.getElementById('anomalyCheckDetails');
+            anomalyCheckDetails.innerHTML = '';
+            
+            if (!jsonData || jsonData.length < 2) {
+                anomalyCheckDetails.innerHTML = '<div class="result-item error"><div class="result-title">✗ Tidak ada data untuk dianalisis</div></div>';
+                return;
+            }
+            
+            // Ambil header dan data
+            const headers = jsonData[0];
+            const dataRows = jsonData.slice(1);
+            
+            // Cari indeks kolom yang diperlukan
+            const muatanIndex = headers.indexOf('muatan');
+            const usahaIndex = headers.indexOf('usaha');
+            const bkuIndex = headers.indexOf('bku');
+            const kkIndex = headers.indexOf('kk');
+            const bttIndex = headers.indexOf('btt');
+            const bttkIndex = headers.indexOf('bttk');
+            const bbttNonusahaIndex = headers.indexOf('bbtt_nonusaha');
+            
+            // Cek jika ada kolom yang tidak ditemukan
+            const requiredColumns = [
+                { name: 'muatan', index: muatanIndex },
+                { name: 'usaha', index: usahaIndex },
+                { name: 'bku', index: bkuIndex },
+                { name: 'kk', index: kkIndex },
+                { name: 'btt', index: bttIndex },
+                { name: 'bttk', index: bttkIndex },
+                { name: 'bbtt_nonusaha', index: bbttNonusahaIndex }
+            ];
+            
+            const missingColumns = requiredColumns.filter(col => col.index === -1);
+            
+            if (missingColumns.length > 0) {
+                anomalyCheckDetails.innerHTML = `
+                    <div class="result-item error">
+                        <div class="result-title">✗ Tidak dapat melakukan pengecekan anomali</div>
+                        <div>Kolom berikut tidak ditemukan: ${missingColumns.map(col => col.name).join(', ')}</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            let anomaly1Errors = []; // usaha >= bku
+            let anomaly2Errors = []; // muatan >= max(kk, btt) + bttk + bbtt_nonusaha + usaha
+            let anomaly3Errors = []; // muatan > 240
+            
+            dataRows.forEach((row, index) => {
+                if (row.length > Math.max(muatanIndex, usahaIndex, bkuIndex, kkIndex, bttIndex, bttkIndex, bbttNonusahaIndex)) {
+                    const muatan = parseInt(row[muatanIndex]) || 0;
+                    const usaha = parseInt(row[usahaIndex]) || 0;
+                    const bku = parseInt(row[bkuIndex]) || 0;
+                    const kk = parseInt(row[kkIndex]) || 0;
+                    const btt = parseInt(row[bttIndex]) || 0;
+                    const bttk = parseInt(row[bttkIndex]) || 0;
+                    const bbttNonusaha = parseInt(row[bbttNonusahaIndex]) || 0;
+                    
+                    // Anomali 1: usaha >= bku
+                    if (usaha < bku) {
+                        anomaly1Errors.push(`Baris ${index + 2}: usaha (${usaha}) < bku (${bku})`);
+                    }
+                    
+                    // Anomali 2: muatan >= max(kk, btt) + bttk + bbtt_nonusaha + usaha
+                    const maxKKorBTT = Math.max(kk, btt);
+                    const total = maxKKorBTT + bttk + bbttNonusaha + usaha;
+                    if (muatan < total) {
+                        anomaly2Errors.push(`Baris ${index + 2}: muatan (${muatan}) < ${maxKKorBTT} + ${bttk} + ${bbttNonusaha} + ${usaha} = ${total}`);
+                    }
+                    
+                    // Anomali 3: muatan > 240
+                    if (muatan > 240) {
+                        anomaly3Errors.push(`Baris ${index + 2}: muatan (${muatan}) > 240`);
+                    }
+                }
+            });
+            
+            // Tampilkan hasil anomali
+            anomalyCheckDetails.innerHTML += `
+                <div class="result-item ${anomaly1Errors.length === 0 ? 'success' : 'error'}">
+                    <div class="result-title">${anomaly1Errors.length === 0 ? '✓' : '✗'} usaha >= bku</div>
+                    <div>${anomaly1Errors.length === 0 ? 'Kondisi terpenuhi' : `Terdapat ${anomaly1Errors.length} record dengan usaha < bku`}</div>
+                    ${anomaly1Errors.length > 0 ? `
+                        <div class="error-details" style="display: none;">${anomaly1Errors.join('<br>')}</div>
+                        <span class="toggle-details" onclick="toggleErrorDetails(this)">Tampilkan detail</span>
+                    ` : ''}
+                </div>
+                <div class="result-item ${anomaly2Errors.length === 0 ? 'success' : 'error'}">
+                    <div class="result-title">${anomaly2Errors.length === 0 ? '✓' : '✗'} muatan >= maximum(kk atau btt) + bttk + bbtt_nonusaha + usaha</div>
+                    <div>${anomaly2Errors.length === 0 ? 'Kondisi terpenuhi' : `Terdapat ${anomaly2Errors.length} record yang tidak memenuhi kondisi`}</div>
+                    ${anomaly2Errors.length > 0 ? `
+                        <div class="error-details" style="display: none;">${anomaly2Errors.join('<br>')}</div>
+                        <span class="toggle-details" onclick="toggleErrorDetails(this)">Tampilkan detail</span>
+                    ` : ''}
+                </div>
+                <div class="result-item ${anomaly3Errors.length === 0 ? 'success' : 'warning'}">
+                    <div class="result-title">${anomaly3Errors.length === 0 ? '✓' : '⚠'} muatan > 240</div>
+                    <div>${anomaly3Errors.length === 0 ? 'Tidak ada record dengan muatan > 240' : `Terdapat ${anomaly3Errors.length} record dengan muatan > 240`}</div>
+                    ${anomaly3Errors.length > 0 ? `
+                        <div class="error-details" style="display: none;">${anomaly3Errors.join('<br>')}</div>
+                        <span class="toggle-details" onclick="toggleErrorDetails(this)">Tampilkan detail</span>
+                    ` : ''}
+                </div>
+            `;
+        }
+        
+        function checkMasterWilayah(lkData) {
+            const masterCheckDetails = document.getElementById('masterCheckDetails');
+            masterCheckDetails.innerHTML = '';
+            
+            if (!lkData || lkData.length < 2 || !masterWilayahData || masterWilayahData.length < 2) {
+                masterCheckDetails.innerHTML = '<div class="result-item error"><div class="result-title">✗ Data tidak cukup untuk pengecekan master wilayah</div></div>';
+                return;
+            }
+            
+            // Ambil header dari kedua file
+            const lkHeaders = lkData[0];
+            const masterHeaders = masterWilayahData[0];
+            
+            // Cari kolom idsubsls di kedua file
+            const lkIdsubslsIndex = lkHeaders.indexOf('idsubsls');
+            const masterIdsubslsIndex = masterHeaders.indexOf('idsubsls');
+            
+            // Jika kolom idsubsls tidak ditemukan di salah satu file
+            if (lkIdsubslsIndex === -1) {
+                masterCheckDetails.innerHTML = '<div class="result-item error"><div class="result-title">✗ Kolom idsubsls tidak ditemukan di file LK</div></div>';
+                return;
+            }
+            
+            if (masterIdsubslsIndex === -1) {
+                masterCheckDetails.innerHTML = '<div class="result-item error"><div class="result-title">✗ Kolom idsubsls tidak ditemukan di file Master Wilayah</div></div>';
+                return;
+            }
+            
+            // Ambil data idsubsls dari master wilayah
+            const masterIdsubsls = new Set();
+            for (let i = 1; i < masterWilayahData.length; i++) {
+                if (masterWilayahData[i].length > masterIdsubslsIndex) {
+                    const idsubsls = masterWilayahData[i][masterIdsubslsIndex];
+                    if (idsubsls) {
+                        masterIdsubsls.add(idsubsls.toString().trim());
+                    }
+                }
+            }
+            
+            // Ambil data idsubsls dari file LK
+            const lkIdsubsls = new Set();
+            for (let i = 1; i < lkData.length; i++) {
+                if (lkData[i].length > lkIdsubslsIndex) {
+                    const idsubsls = lkData[i][lkIdsubslsIndex];
+                    if (idsubsls) {
+                        lkIdsubsls.add(idsubsls.toString().trim());
+                    }
+                }
+            }
+            
+            // Bandingkan dengan idsubsls dari file LK
+            const unmatchedIds = []; // idsubsls di LK tapi tidak ada di master
+            const missingIds = []; // idsubsls di master tapi tidak ada di LK (seharusnya ada)
+            let matchedCount = 0;
+            let totalChecked = 0;
+            
+            // Cek idsubsls dari LK yang tidak ada di master
+            for (let i = 1; i < lkData.length; i++) {
+                if (lkData[i].length > lkIdsubslsIndex) {
+                    const idsubsls = lkData[i][lkIdsubslsIndex];
+                    if (idsubsls) {
+                        totalChecked++;
+                        const idsubslsStr = idsubsls.toString().trim();
+                        if (masterIdsubsls.has(idsubslsStr)) {
+                            matchedCount++;
+                        } else {
+                            unmatchedIds.push(`Baris ${i + 1}: ${idsubslsStr}`);
+                        }
+                    }
+                }
+            }
+            
+            // Cek idsubsls dari master yang tidak ada di LK (seharusnya ada)
+            masterIdsubsls.forEach(idsubsls => {
+                if (!lkIdsubsls.has(idsubsls)) {
+                    missingIds.push(idsubsls);
+                }
+            });
+            
+            const matchPercentage = totalChecked > 0 ? Math.round((matchedCount / totalChecked) * 100) : 0;
+            
+            // Tampilkan hasil pencocokan
+            let resultHTML = '';
+            
+            // 1. Pencocokan idsubsls dengan Master Wilayah
+            resultHTML += `
+                <div class="result-item ${matchPercentage === 100 ? 'success' : (matchPercentage >= 95 ? 'warning' : 'error')}">
+                    <div class="result-title">${matchPercentage === 100 ? '✓' : (matchPercentage >= 95 ? '⚠' : '✗')} Pencocokan idsubsls dengan Master Wilayah</div>
+                    <div>${matchedCount} dari ${totalChecked} idsubsls sesuai dengan master wilayah (${matchPercentage}%)</div>
+                    ${unmatchedIds.length > 0 ? `
+                        <span class="toggle-details" onclick="toggleErrorDetails(this)">Tampilkan detail idsubsls yang tidak ditemukan di master</span>
+                        <div class="error-details" style="display: none;">
+                            <strong>Idsubsls yang tidak ditemukan di master wilayah:</strong><br>
+                            ${unmatchedIds.join('<br>')}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+            
+            // 2. Pengecekan idsubsls yang seharusnya ada di LK
+            resultHTML += `
+                <div class="result-item ${missingIds.length === 0 ? 'success' : 'error'}">
+                    <div class="result-title">${missingIds.length === 0 ? '✓' : '✗'} Kelengkapan idsubsls di File LK</div>
+                    <div>${missingIds.length === 0 ? 
+                        'Semua idsubsls dari master wilayah terdapat di file LK' : 
+                        `Terdapat ${missingIds.length} idsubsls dari master wilayah yang tidak ada di file LK`}
+                    </div>
+                    ${missingIds.length > 0 ? `
+                        <span class="toggle-details" onclick="toggleErrorDetails(this)">Tampilkan detail idsubsls yang seharusnya ada</span>
+                        <div class="error-details" style="display: none;">
+                            <strong>Idsubsls yang seharusnya ada di file LK:</strong><br>
+                            ${missingIds.join('<br>')}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+            
+            // 3. Ringkasan perbandingan jumlah
+            const totalMasterIds = masterIdsubsls.size;
+            const totalLkIds = lkIdsubsls.size;
+            const totalIntersection = matchedCount;
+            
+            resultHTML += `
+                <div class="result-item ${totalMasterIds === totalLkIds && totalLkIds === totalIntersection ? 'success' : 'warning'}">
+                    <div class="result-title">📊 Ringkasan Perbandingan Data</div>
+                    <div>Total idsubsls di Master Wilayah: ${totalMasterIds}</div>
+                    <div>Total idsubsls di File LK: ${totalLkIds}</div>
+                    <div>Total yang cocok: ${totalIntersection}</div>
+                    <div>Selisih: ${Math.abs(totalMasterIds - totalLkIds)}</div>
+                    ${totalMasterIds !== totalLkIds ? 
+                        `<div class="warning">PERINGATAN: Jumlah idsubsls di file LK (${totalLkIds}) tidak sama dengan master wilayah (${totalMasterIds})</div>` : 
+                        `<div class="success">✓ Jumlah idsubsls sesuai antara file LK dan master wilayah</div>`
+                    }
+                </div>
+            `;
+            
+            masterCheckDetails.innerHTML = resultHTML;
+        }
+        
+        // Fungsi untuk toggle detail error - VERSI FINAL
+        function toggleErrorDetails(element) {
+            // Cari parent result-item terdekat
+            const resultItem = element.closest('.result-item');
+            if (!resultItem) return;
+            
+            // Cari elemen error-details di dalam result-item
+            const errorDetails = resultItem.querySelector('.error-details');
+            if (!errorDetails) return;
+            
+            // Toggle display
+            if (errorDetails.style.display === 'none' || errorDetails.style.display === '') {
+                errorDetails.style.display = 'block';
+                element.textContent = 'Sembunyikan detail';
+            } else {
+                errorDetails.style.display = 'none';
+                element.textContent = 'Tampilkan detail';
+            }
+        }
+    </script>
+</body>
+</html>
