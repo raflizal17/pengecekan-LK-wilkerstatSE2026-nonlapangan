@@ -933,7 +933,7 @@
                 </div>
             `;
         }
-        
+                
         function checkMasterWilayah(lkData) {
             const masterCheckDetails = document.getElementById('masterCheckDetails');
             masterCheckDetails.innerHTML = '';
@@ -962,54 +962,75 @@
                 return;
             }
             
-            // Ambil data idsubsls dari master wilayah
-            const masterIdsubsls = new Set();
+            // Ambil data idsubsls dari master wilayah (14 digit pertama)
+            const masterIdsubsls14Digit = new Set();
             for (let i = 1; i < masterWilayahData.length; i++) {
                 if (masterWilayahData[i].length > masterIdsubslsIndex) {
                     const idsubsls = masterWilayahData[i][masterIdsubslsIndex];
                     if (idsubsls) {
-                        masterIdsubsls.add(idsubsls.toString().trim());
+                        const idsubslsStr = idsubsls.toString().trim();
+                        // Ambil 14 digit pertama untuk pencocokan
+                        const first14Digits = idsubslsStr.substring(0, 14);
+                        if (first14Digits.length === 14) {
+                            masterIdsubsls14Digit.add(first14Digits);
+                        }
                     }
                 }
             }
             
-            // Ambil data idsubsls dari file LK
-            const lkIdsubsls = new Set();
+            // Ambil data idsubsls dari file LK (14 digit pertama)
+            const lkIdsubsls14Digit = new Set();
+            const lkIdsubslsFull = new Set(); // Untuk data lengkap
             for (let i = 1; i < lkData.length; i++) {
                 if (lkData[i].length > lkIdsubslsIndex) {
                     const idsubsls = lkData[i][lkIdsubslsIndex];
                     if (idsubsls) {
-                        lkIdsubsls.add(idsubsls.toString().trim());
+                        const idsubslsStr = idsubsls.toString().trim();
+                        lkIdsubslsFull.add(idsubslsStr); // Simpan data lengkap
+                        
+                        // Ambil 14 digit pertama untuk pencocokan
+                        const first14Digits = idsubslsStr.substring(0, 14);
+                        if (first14Digits.length === 14) {
+                            lkIdsubsls14Digit.add(first14Digits);
+                        }
                     }
                 }
             }
             
-            // Bandingkan dengan idsubsls dari file LK
+            // Bandingkan dengan 14 digit pertama dari idsubsls
             const unmatchedIds = []; // idsubsls di LK tapi tidak ada di master
             const missingIds = []; // idsubsls di master tapi tidak ada di LK (seharusnya ada)
             let matchedCount = 0;
             let totalChecked = 0;
             
-            // Cek idsubsls dari LK yang tidak ada di master
+            // Cek idsubsls dari LK yang tidak ada di master (berdasarkan 14 digit pertama)
             for (let i = 1; i < lkData.length; i++) {
                 if (lkData[i].length > lkIdsubslsIndex) {
                     const idsubsls = lkData[i][lkIdsubslsIndex];
                     if (idsubsls) {
                         totalChecked++;
                         const idsubslsStr = idsubsls.toString().trim();
-                        if (masterIdsubsls.has(idsubslsStr)) {
+                        const first14Digits = idsubslsStr.substring(0, 14);
+                        
+                        if (masterIdsubsls14Digit.has(first14Digits)) {
                             matchedCount++;
                         } else {
-                            unmatchedIds.push(`Baris ${i + 1}: ${idsubslsStr}`);
+                            unmatchedIds.push(`Baris ${i + 1}: ${idsubslsStr} (14 digit pertama: ${first14Digits})`);
                         }
                     }
                 }
             }
             
-            // Cek idsubsls dari master yang tidak ada di LK (seharusnya ada)
-            masterIdsubsls.forEach(idsubsls => {
-                if (!lkIdsubsls.has(idsubsls)) {
-                    missingIds.push(idsubsls);
+            // Cek idsubsls dari master yang tidak ada di LK (berdasarkan 14 digit pertama)
+            masterIdsubsls14Digit.forEach(first14Digits => {
+                let found = false;
+                lkIdsubsls14Digit.forEach(lkFirst14Digits => {
+                    if (lkFirst14Digits === first14Digits) {
+                        found = true;
+                    }
+                });
+                if (!found) {
+                    missingIds.push(first14Digits);
                 }
             });
             
@@ -1018,10 +1039,11 @@
             // Tampilkan hasil pencocokan
             let resultHTML = '';
             
-            // 1. Pencocokan idsubsls dengan Master Wilayah
+            // 1. Pencocokan idsubsls dengan Master Wilayah (14 digit pertama)
             resultHTML += `
                 <div class="result-item ${matchPercentage === 100 ? 'success' : (matchPercentage >= 95 ? 'warning' : 'error')}">
                     <div class="result-title">${matchPercentage === 100 ? '✓' : (matchPercentage >= 95 ? '⚠' : '✗')} Pencocokan idsubsls dengan Master Wilayah</div>
+                    <div><strong>Pencocokan berdasarkan 14 digit pertama idsubsls</strong></div>
                     <div>${matchedCount} dari ${totalChecked} idsubsls sesuai dengan master wilayah (${matchPercentage}%)</div>
                     ${unmatchedIds.length > 0 ? `
                         <span class="toggle-details" onclick="toggleErrorDetails(this)">Tampilkan detail idsubsls yang tidak ditemukan di master</span>
@@ -1033,7 +1055,7 @@
                 </div>
             `;
             
-            // 2. Pengecekan idsubsls yang seharusnya ada di LK
+            // 2. Pengecekan idsubsls yang seharusnya ada di LK (14 digit pertama)
             resultHTML += `
                 <div class="result-item ${missingIds.length === 0 ? 'success' : 'error'}">
                     <div class="result-title">${missingIds.length === 0 ? '✓' : '✗'} Kelengkapan idsubsls di File LK</div>
@@ -1044,7 +1066,7 @@
                     ${missingIds.length > 0 ? `
                         <span class="toggle-details" onclick="toggleErrorDetails(this)">Tampilkan detail idsubsls yang seharusnya ada</span>
                         <div class="error-details" style="display: none;">
-                            <strong>Idsubsls yang seharusnya ada di file LK:</strong><br>
+                            <strong>Idsubsls (14 digit pertama) yang seharusnya ada di file LK:</strong><br>
                             ${missingIds.join('<br>')}
                         </div>
                     ` : ''}
@@ -1052,13 +1074,13 @@
             `;
             
             // 3. Ringkasan perbandingan jumlah
-            const totalMasterIds = masterIdsubsls.size;
-            const totalLkIds = lkIdsubsls.size;
+            const totalMasterIds = masterIdsubsls14Digit.size;
+            const totalLkIds = lkIdsubsls14Digit.size;
             const totalIntersection = matchedCount;
             
             resultHTML += `
                 <div class="result-item ${totalMasterIds === totalLkIds && totalLkIds === totalIntersection ? 'success' : 'warning'}">
-                    <div class="result-title">📊 Ringkasan Perbandingan Data</div>
+                    <div class="result-title">📊 Ringkasan Perbandingan Data (14 digit pertama)</div>
                     <div>Total idsubsls di Master Wilayah: ${totalMasterIds}</div>
                     <div>Total idsubsls di File LK: ${totalLkIds}</div>
                     <div>Total yang cocok: ${totalIntersection}</div>
@@ -1067,6 +1089,16 @@
                         `<div class="warning">PERINGATAN: Jumlah idsubsls di file LK (${totalLkIds}) tidak sama dengan master wilayah (${totalMasterIds})</div>` : 
                         `<div class="success">✓ Jumlah idsubsls sesuai antara file LK dan master wilayah</div>`
                     }
+                </div>
+            `;
+            
+            // 4. Info tentang pencocokan 14 digit
+            resultHTML += `
+                <div class="result-item info" style="background-color: #e8f4fc; border-left: 5px solid #3498db;">
+                    <div class="result-title">ℹ Informasi Pencocokan</div>
+                    <div>Pencocokan dilakukan berdasarkan <strong>14 digit pertama</strong> dari idsubsls</div>
+                    <div>• File LK: ${Array.from(lkIdsubslsFull).slice(0, 3).map(id => `${id} (${id.length} digit)`).join(', ')}${Array.from(lkIdsubslsFull).length > 3 ? '...' : ''}</div>
+                    <div>• Master: ${Array.from(masterIdsubsls14Digit).slice(0, 3).join(', ')}${masterIdsubsls14Digit.size > 3 ? '...' : ''}</div>
                 </div>
             `;
             
