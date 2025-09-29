@@ -221,6 +221,24 @@
         .doc-link:hover {
             text-decoration: underline;
         }
+
+        #downloadButton {
+            background-color: #27ae60;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: background-color 0.3s;
+            display: none; /* Awalnya disembunyikan */
+            margin: 20px auto;
+        }
+        
+        #downloadButton:hover {
+            background-color: #219a52;
+        }
     </style>
 </head>
 <body>
@@ -259,7 +277,6 @@
             </div>
             
             <button id="checkButton">Cek Format</button>
-            <button id="downloadButton" style="display: none; background-color: #27ae60;" title="Download file dengan idsubsls yang sudah dikoreksi">Download File yang Dikoreksi</button>
         </div>
         
         <div class="loading" id="loadingIndicator">
@@ -296,6 +313,13 @@
             </div>
             
             <div id="summaryTable"></div>
+            
+            <!-- TOMBOL DOWNLOAD DIPINDAH KE SINI -->
+            <div style="text-align: center; margin-top: 30px;">
+                <button id="downloadButton" style="display: none; background-color: #27ae60; padding: 12px 25px; font-size: 16px;">
+                    📥 Download File yang Dikoreksi
+                </button>
+            </div>
         </div>
     </div>
 
@@ -739,12 +763,12 @@
                 });
             });
             
-            // TAMPILKAN INFO KOREKSI JIKA ADA IDSUBSLS 14 DIGIT
+            // Di bagian tampilkan info koreksi idsubsls 14 digit
             if (idsubsls14DigitCount > 0) {
                 dataTypeCheckDetails.innerHTML += `
                     <div class="result-item warning">
                         <div class="result-title">⚠ Ditemukan ${idsubsls14DigitCount} idsubsls 14 digit</div>
-                        <div>File yang sudah dikoreksi tersedia untuk di-download (tombol di atas)</div>
+                        <div><strong>File yang sudah dikoreksi tersedia untuk di-download (tombol di bawah laporan)</strong></div>
                         <div>idsubsls 14 digit akan dikoreksi menjadi 16 digit dengan menambahkan "00"</div>
                         <div>kdsubsls akan diubah menjadi "00"</div>
                         <div class="error-details" style="display: none;">
