@@ -962,7 +962,7 @@
                 return;
             }
             
-            // Ambil data idsubsls dari master wilayah (14 digit pertama)
+            // Ambil data idsls dari master wilayah (14 digit pertama)
             const masterIdsubsls14Digit = new Set();
             const masterFullData = new Map(); // Simpan data lengkap untuk referensi
             
@@ -1051,8 +1051,8 @@
                 <div class="result-item ${missingIds.length === 0 ? 'success' : 'error'}">
                     <div class="result-title">${missingIds.length === 0 ? '✓' : '✗'} Kelengkapan idsubsls di File LK</div>
                     <div>${missingIds.length === 0 ? 
-                        'Semua idsubsls dari master wilayah terdapat di file LK' : 
-                        `Terdapat ${missingIds.length} idsubsls dari master wilayah yang tidak ada di file LK`}
+                        'Semua idsls dari master wilayah terdapat di file LK' : 
+                        `Terdapat ${missingIds.length} idsls dari master wilayah yang tidak ada di file LK`}
                     </div>
                     ${missingIds.length > 0 ? `
                         <span class="toggle-details" onclick="toggleErrorDetails(this)">Tampilkan ${missingIds.length} idsubsls yang seharusnya ada</span>
