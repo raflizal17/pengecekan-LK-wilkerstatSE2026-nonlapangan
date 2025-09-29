@@ -680,20 +680,24 @@
                                 }
                             }
                             
-                            // CEK KHUSUS: idsubsls harus 16 digit - TAMPILKAN ERROR JIKA 14 DIGIT
+                            // CEK KHUSUS: idsubsls harus 16 digit - PERBAIKAN DI SINI
                             if (metadata.variable === 'idsubsls' && metadata.length) {
                                 const valueStr = value.toString();
                                 
-                                // DETEKSI 14 DIGIT - TAMPILKAN ERROR
-                                if (valueStr.length === 14 && /^\d+$/.test(valueStr)) {
-                                    idsubsls14DigitCount++;
-                                    idsubsls14DigitErrors.push(`Baris ${rowNum}: "${value}" harus 16 digit (saat ini 14 digit)`);
+                                // CEK PANJANG HARUS 16 DIGIT
+                                if (valueStr.length !== metadata.length) {
                                     errorDetails[metadata.variable].push(`Baris ${rowNum}: "${value}" harus ${metadata.length} digit karakter angka (saat ini ${valueStr.length} digit)`);
                                     totalErrors++;
+                                    
+                                    // Catat khusus untuk 14 digit
+                                    if (valueStr.length === 14 && /^\d+$/.test(valueStr)) {
+                                        idsubsls14DigitCount++;
+                                        idsubsls14DigitErrors.push(`Baris ${rowNum}: "${value}" harus 16 digit (saat ini 14 digit)`);
+                                    }
                                 }
-                                // ERROR UNTUK PANJANG LAIN YANG TIDAK SESUAI
-                                else if (valueStr.length !== metadata.length || isNaN(valueStr)) {
-                                    errorDetails[metadata.variable].push(`Baris ${rowNum}: "${value}" harus ${metadata.length} digit karakter angka`);
+                                // CEK HARUS ANGKA SEMUA
+                                else if (isNaN(valueStr)) {
+                                    errorDetails[metadata.variable].push(`Baris ${rowNum}: "${value}" harus terdiri dari karakter angka saja`);
                                     totalErrors++;
                                 }
                             }
@@ -763,7 +767,7 @@
                 });
             });
             
-            // Di bagian tampilkan info koreksi idsubsls 14 digit
+            // TAMPILKAN INFO KOREKSI JIKA ADA IDSUBSLS 14 DIGIT
             if (idsubsls14DigitCount > 0) {
                 dataTypeCheckDetails.innerHTML += `
                     <div class="result-item warning">
@@ -969,6 +973,8 @@
             // Ambil data idsls (14 digit pertama) dari master wilayah
             const masterIdslsSet = new Set();
             const masterIdslsToFullMap = new Map();
+            const masterIdslsCount = new Map(); // Untuk hitung duplikat idsls di master
+            const masterDuplicates = []; // Simpan data duplikat idsls di master
             
             for (let i = 1; i < masterWilayahData.length; i++) {
                 if (masterWilayahData[i].length > masterIdsubslsIndex) {
@@ -980,10 +986,29 @@
                         if (idsls.length === 14) {
                             masterIdslsSet.add(idsls);
                             masterIdslsToFullMap.set(idsls, idsubslsStr);
+                            
+                            // Hitung duplikat idsls di master
+                            if (masterIdslsCount.has(idsls)) {
+                                masterIdslsCount.set(idsls, masterIdslsCount.get(idsls) + 1);
+                            } else {
+                                masterIdslsCount.set(idsls, 1);
+                            }
                         }
                     }
                 }
             }
+            
+            // Identifikasi duplikat idsls di master
+            masterIdslsCount.forEach((count, idsls) => {
+                if (count > 1) {
+                    const fullId = masterIdslsToFullMap.get(idsls);
+                    masterDuplicates.push({
+                        idsls: idsls,
+                        count: count,
+                        exampleFullId: fullId
+                    });
+                }
+            });
             
             // Ambil data idsls (14 digit pertama) dari file LK untuk pencocokan master
             const lkIdslsSet = new Set();
@@ -1100,6 +1125,30 @@
                 `;
             }
             
+            // 0b. Pengecekan Duplikat idsls (14 digit) di Master
+            if (masterDuplicates.length > 0) {
+                resultHTML += `
+                    <div class="result-item error">
+                        <div class="result-title">✗ Ditemukan ${masterDuplicates.length} idsls duplikat di Master</div>
+                        <div>Total records dengan idsls duplikat: ${masterDuplicates.reduce((sum, dup) => sum + (dup.count - 1), 0)}</div>
+                        <span class="toggle-details" onclick="toggleErrorDetails(this)">Tampilkan detail duplikat</span>
+                        <div class="error-details" style="display: none;">
+                            <strong>Detail idsls duplikat (14 digit) di Master:</strong><br>
+                            ${masterDuplicates.map(dup => 
+                                `Idsls: ${dup.idsls} (${dup.count}x) - Contoh: ${dup.exampleFullId}`
+                            ).join('<br>')}
+                        </div>
+                    </div>
+                `;
+            } else {
+                resultHTML += `
+                    <div class="result-item success">
+                        <div class="result-title">✓ Tidak ada idsls duplikat di Master</div>
+                        <div>Semua idsls (14 digit) unik di master wilayah</div>
+                    </div>
+                `;
+            }
+            
             // 1. Pencocokan dari LK ke Master
             resultHTML += `
                 <div class="result-item ${lkMatchPercentage === 100 ? 'success' : (lkMatchPercentage >= 95 ? 'warning' : 'error')}">
@@ -1134,18 +1183,23 @@
             
             // 3. Ringkasan perbandingan
             resultHTML += `
-                <div class="result-item ${lkMatchPercentage === 100 && masterMatchPercentage === 100 && lkDuplicates.length === 0 ? 'success' : 'warning'}">
+                <div class="result-item ${lkMatchPercentage === 100 && masterMatchPercentage === 100 && lkDuplicates.length === 0 && masterDuplicates.length === 0 ? 'success' : 'warning'}">
                     <div class="result-title">📊 Ringkasan Pencocokan</div>
                     <div>Total records di LK: ${totalLkRecords}</div>
                     <div>Total records di Master: ${totalMasterRecords}</div>
                     <div>Unique idsls (14 digit) di LK: ${lkIdslsSet.size}</div>
                     <div>Unique idsls (14 digit) di Master: ${masterIdslsSet.size}</div>
                     <div>Duplikat idsubsls (16 digit) di LK: ${lkDuplicates.length}</div>
+                    <div>Duplikat idsls (14 digit) di Master: ${masterDuplicates.length}</div>
                     <div>Match LK → Master: ${lkToMasterMatch}/${totalLkRecords} (${lkMatchPercentage}%)</div>
                     <div>Match Master → LK: ${masterToLkMatch}/${totalMasterRecords} (${masterMatchPercentage}%)</div>
                     ${lkDuplicates.length > 0 ? 
                         `<div class="error">❌ Ditemukan ${lkDuplicates.length} idsubsls duplikat di file LK</div>` : 
                         `<div class="success">✓ Tidak ada duplikat idsubsls di file LK</div>`
+                    }
+                    ${masterDuplicates.length > 0 ? 
+                        `<div class="error">❌ Ditemukan ${masterDuplicates.length} idsls duplikat di master wilayah</div>` : 
+                        `<div class="success">✓ Tidak ada duplikat idsls di master wilayah</div>`
                     }
                     ${lkMatchPercentage !== 100 || masterMatchPercentage !== 100 ? 
                         `<div class="warning">⚠ Ada ketidaksesuaian antara LK dan master wilayah</div>` : 
@@ -1159,17 +1213,14 @@
                 <div class="result-item info" style="background-color: #e8f4fc; border-left: 5px solid #3498db;">
                     <div class="result-title">ℹ Informasi Pencocokan</div>
                     <div><strong>Konsep:</strong></div>
-                    <div>• <strong>idsubsls</strong> = 16 digit (untuk pengecekan tipe data & cek duplikat)</div>
-                    <div>• <strong>idsls</strong> = 14 digit pertama (untuk pencocokan master)</div>
+                    <div>• <strong>idsubsls</strong> = 16 digit (untuk pengecekan tipe data & cek duplikat di LK)</div>
+                    <div>• <strong>idsls</strong> = 14 digit pertama (untuk pencocokan master & cek duplikat di master)</div>
                     <div><strong>Pengecekan Duplikat:</strong></div>
-                    <div>• Dicek berdasarkan <strong>idsubsls lengkap (16 digit)</strong></div>
-                    <div>• Jika ada idsubsls yang sama persis di lebih dari 1 baris = duplikat</div>
-                    <div><strong>Contoh Duplikat:</strong></div>
-                    <div>• Baris 5: "1101010001000101"</div>
-                    <div>• Baris 10: "1101010001000101" → <strong>DUPLIKAT</strong> (sama persis)</div>
-                    <div><strong>Contoh Bukan Duplikat:</strong></div>
-                    <div>• Baris 5: "1101010001000101"</div>
-                    <div>• Baris 10: "1101010001000102" → <strong>BUKAN DUPLIKAT</strong> (digit 15-16 berbeda)</div>
+                    <div>• <strong>LK</strong>: Dicek berdasarkan idsubsls lengkap (16 digit)</div>
+                    <div>• <strong>Master</strong>: Dicek berdasarkan idsls (14 digit pertama)</div>
+                    <div><strong>Contoh Duplikat di Master:</strong></div>
+                    <div>• "1101010001000100" → idsls: "11010100010001"</div>
+                    <div>• "1101010001000200" → idsls: "11010100010001" → <strong>DUPLIKAT</strong> (14 digit sama)</div>
                 </div>
             `;
             
