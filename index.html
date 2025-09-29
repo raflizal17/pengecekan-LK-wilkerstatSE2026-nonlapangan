@@ -377,14 +377,22 @@
                     // Konversi ke JSON
                     masterWilayahData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
                     
+                    console.log('Master data loaded:', masterWilayahData.length, 'rows');
+                    
                     // Lanjutkan proses file LK
                     processLKFile(lkFile, kodeKab);
                     
                 } catch (error) {
                     console.error('Error membaca file master:', error);
                     document.getElementById('loadingIndicator').style.display = 'none';
-                    alert('Terjadi kesalahan saat membaca file master. Pastikan file adalah format Excel yang valid.');
+                    alert('Terjadi kesalahan saat membaca file master. Pastikan file adalah format Excel yang valid. Error: ' + error.message);
                 }
+            };
+            
+            reader.onerror = function() {
+                console.error('Error membaca file master');
+                document.getElementById('loadingIndicator').style.display = 'none';
+                alert('Terjadi kesalahan saat membaca file master.');
             };
             
             reader.readAsArrayBuffer(masterFile);
@@ -405,12 +413,15 @@
                     // Konversi ke JSON
                     const lkData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
                     
+                    console.log('Data awal loaded:', lkData.length, 'rows');
+                    
                     // Simpan data asli
                     correctedData = lkData;
                     correctedWorkbook = workbook;
                     
                     // Koreksi idsubsls 14 digit
                     correctedData = koreksiIdsubsls14Digit(lkData);
+                    console.log('Data setelah koreksi:', correctedData.length, 'rows');
                     
                     // Update worksheet dengan data yang dikoreksi
                     const correctedWorksheet = XLSX.utils.aoa_to_sheet(correctedData);
@@ -423,8 +434,12 @@
                     document.getElementById('resultSection').style.display = 'block';
                     
                     // Tampilkan tombol download jika ada koreksi
-                    if (correctedData !== lkData) {
+                    const originalDataLength = lkData ? lkData.length : 0;
+                    const correctedDataLength = correctedData ? correctedData.length : 0;
+                    
+                    if (originalDataLength !== correctedDataLength || JSON.stringify(lkData) !== JSON.stringify(correctedData)) {
                         document.getElementById('downloadButton').style.display = 'block';
+                        console.log('Tombol download ditampilkan');
                     }
                     
                     // Lakukan pengecekan dengan data yang sudah dikoreksi
@@ -437,12 +452,18 @@
                 } catch (error) {
                     console.error('Error membaca file LK:', error);
                     document.getElementById('loadingIndicator').style.display = 'none';
-                    alert('Terjadi kesalahan saat membaca file LK. Pastikan file adalah format Excel yang valid.');
+                    alert('Terjadi kesalahan saat membaca file LK. Pastikan file adalah format Excel yang valid. Error: ' + error.message);
                 }
             };
             
+            reader.onerror = function() {
+                console.error('Error membaca file');
+                document.getElementById('loadingIndicator').style.display = 'none';
+                alert('Terjadi kesalahan saat membaca file.');
+            };
+            
             reader.readAsArrayBuffer(lkFile);
-        }
+        }  
         
         function checkFileFormat(file, kodeKab) {
             const fileCheckDetails = document.getElementById('fileCheckDetails');
@@ -1025,52 +1046,57 @@
             }
         }
 
-        // Fungsi untuk mengoreksi idsubsls 14 digit
+        // Fungsi untuk mengoreksi idsubsls 14 digit - VERSI DIPERBAIKI
         function koreksiIdsubsls14Digit(jsonData) {
+            if (!jsonData || jsonData.length < 2) {
+                return jsonData;
+            }
+            
             const headers = jsonData[0];
             const dataRows = jsonData.slice(1);
             
             const idsubslsIndex = headers.indexOf('idsubsls');
             const kdsubslsIndex = headers.indexOf('kdsubsls');
             
+            // Jika kolom tidak ditemukan, return data asli
             if (idsubslsIndex === -1 || kdsubslsIndex === -1) {
-                return jsonData; // Tidak bisa mengoreksi jika kolom tidak ditemukan
+                console.log('Kolom idsubsls atau kdsubsls tidak ditemukan');
+                return jsonData;
             }
             
             let dikoreksiCount = 0;
             
-            // Proses setiap baris data
+            // Buat salinan data untuk menghindari modifikasi langsung
             const dataTerkoreksi = dataRows.map(row => {
-                if (row.length > idsubslsIndex) {
-                    const idsubsls = row[idsubslsIndex];
+                const newRow = [...row]; // Salinan baris
+                
+                if (newRow.length > idsubslsIndex) {
+                    const idsubsls = newRow[idsubslsIndex];
                     
-                    if (idsubsls && idsubsls.toString().length === 14) {
+                    // Cek jika idsubsls ada dan panjangnya 14 digit angka
+                    if (idsubsls && idsubsls.toString().length === 14 && !isNaN(idsubsls)) {
                         // Koreksi idsubsls: tambahkan '00' di akhir
                         const idsubslsTerkoreksi = idsubsls.toString() + '00';
-                        row[idsubslsIndex] = idsubslsTerkoreksi;
+                        newRow[idsubslsIndex] = idsubslsTerkoreksi;
                         
                         // Koreksi kdsubsls: set ke '00'
-                        if (row.length > kdsubslsIndex) {
-                            row[kdsubslsIndex] = '00';
+                        if (newRow.length > kdsubslsIndex) {
+                            newRow[kdsubslsIndex] = '00';
                         }
                         
                         dikoreksiCount++;
                         console.log(`Dikoreksi: ${idsubsls} -> ${idsubslsTerkoreksi}, kdsubsls -> 00`);
                     }
                 }
-                return row;
+                return newRow;
             });
             
             if (dikoreksiCount > 0) {
-                alert(`Berhasil mengoreksi ${dikoreksiCount} record dengan idsubsls 14 digit`);
+                console.log(`Berhasil mengoreksi ${dikoreksiCount} record dengan idsubsls 14 digit`);
             }
             
             return [headers, ...dataTerkoreksi];
         }
-        
-        // Variabel global untuk menyimpan data yang sudah dikoreksi
-        let correctedData = null;
-        let correctedWorkbook = null;
         
         // Fungsi untuk download file yang dikoreksi
         function downloadCorrectedFile() {
@@ -1086,23 +1112,35 @@
                 const newFileName = `${fileNameWithoutExt}_corrected.xlsx`;
                 
                 // Konversi workbook ke binary string
-                const wbout = XLSX.write(correctedWorkbook, { bookType: 'xlsx', type: 'binary' });
+                const wbout = XLSX.write(correctedWorkbook, { 
+                    bookType: 'xlsx', 
+                    type: 'binary',
+                    bookSST: false,
+                    compression: false
+                });
                 
                 // Buat blob dan download
-                const blob = new Blob([s2ab(wbout)], { type: 'application/octet-stream' });
+                const blob = new Blob([s2ab(wbout)], { 
+                    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+                });
+                
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
                 a.download = newFileName;
                 document.body.appendChild(a);
                 a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
+                
+                // Cleanup
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }, 100);
                 
                 alert(`File berhasil diunduh: ${newFileName}`);
             } catch (error) {
                 console.error('Error downloading file:', error);
-                alert('Terjadi kesalahan saat mengunduh file');
+                alert('Terjadi kesalahan saat mengunduh file: ' + error.message);
             }
         }
         
@@ -1110,11 +1148,13 @@
         function s2ab(s) {
             const buf = new ArrayBuffer(s.length);
             const view = new Uint8Array(buf);
-            for (let i = 0; i < s.length; i++) view[i] = s.charCodeAt(i) & 0xFF;
+            for (let i = 0; i < s.length; i++) {
+                view[i] = s.charCodeAt(i) & 0xFF;
+            }
             return buf;
         }
-        
-        // Event listener untuk tombol download
+
+        // Event listener untuk tombol download - PASTIKAN INI DITAMBAHKAN
         document.getElementById('downloadButton').addEventListener('click', downloadCorrectedFile);
         
     </script>
