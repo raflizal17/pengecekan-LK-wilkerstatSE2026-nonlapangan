@@ -415,17 +415,27 @@
                     
                     console.log('Data awal loaded:', lkData.length, 'rows');
                     
-                    // Simpan data asli
-                    correctedData = lkData;
+                    // Simpan workbook asli dulu
                     correctedWorkbook = workbook;
                     
-                    // Koreksi idsubsls 14 digit
-                    correctedData = koreksiIdsubsls14Digit(lkData);
-                    console.log('Data setelah koreksi:', correctedData.length, 'rows');
-                    
-                    // Update worksheet dengan data yang dikoreksi
-                    const correctedWorksheet = XLSX.utils.aoa_to_sheet(correctedData);
-                    correctedWorkbook.Sheets[firstSheetName] = correctedWorksheet;
+                    // Coba koreksi data, jika error gunakan data asli
+                    try {
+                        correctedData = koreksiIdsubsls14Digit(lkData);
+                        console.log('Data setelah koreksi:', correctedData.length, 'rows');
+                        
+                        // Update worksheet dengan data yang dikoreksi
+                        const correctedWorksheet = XLSX.utils.aoa_to_sheet(correctedData);
+                        correctedWorkbook.Sheets[firstSheetName] = correctedWorksheet;
+                        
+                        // Tampilkan tombol download jika ada perubahan
+                        if (JSON.stringify(lkData) !== JSON.stringify(correctedData)) {
+                            document.getElementById('downloadButton').style.display = 'block';
+                            console.log('Tombol download ditampilkan - ada koreksi');
+                        }
+                    } catch (koreksiError) {
+                        console.error('Error saat koreksi:', koreksiError);
+                        correctedData = lkData; // Gunakan data asli jika koreksi error
+                    }
                     
                     // Sembunyikan loading indicator
                     document.getElementById('loadingIndicator').style.display = 'none';
@@ -433,16 +443,7 @@
                     // Tampilkan hasil pengecekan
                     document.getElementById('resultSection').style.display = 'block';
                     
-                    // Tampilkan tombol download jika ada koreksi
-                    const originalDataLength = lkData ? lkData.length : 0;
-                    const correctedDataLength = correctedData ? correctedData.length : 0;
-                    
-                    if (originalDataLength !== correctedDataLength || JSON.stringify(lkData) !== JSON.stringify(correctedData)) {
-                        document.getElementById('downloadButton').style.display = 'block';
-                        console.log('Tombol download ditampilkan');
-                    }
-                    
-                    // Lakukan pengecekan dengan data yang sudah dikoreksi
+                    // Lakukan pengecekan dengan data yang sudah diproses
                     checkFileFormat(lkFile, kodeKab);
                     checkVariables(correctedData);
                     checkDataTypesAndCompleteness(correctedData);
@@ -463,7 +464,7 @@
             };
             
             reader.readAsArrayBuffer(lkFile);
-        }  
+        }
         
         function checkFileFormat(file, kodeKab) {
             const fileCheckDetails = document.getElementById('fileCheckDetails');
@@ -1045,8 +1046,8 @@
                 element.textContent = 'Tampilkan detail';
             }
         }
-
-        // Fungsi untuk mengoreksi idsubsls 14 digit - VERSI DIPERBAIKI
+        
+        // Fungsi untuk mengoreksi idsubsls 14 digit - VERSI SEDERHANA
         function koreksiIdsubsls14Digit(jsonData) {
             if (!jsonData || jsonData.length < 2) {
                 return jsonData;
@@ -1058,9 +1059,11 @@
             const idsubslsIndex = headers.indexOf('idsubsls');
             const kdsubslsIndex = headers.indexOf('kdsubsls');
             
+            console.log('Index idsubsls:', idsubslsIndex, 'Index kdsubsls:', kdsubslsIndex);
+            
             // Jika kolom tidak ditemukan, return data asli
-            if (idsubslsIndex === -1 || kdsubslsIndex === -1) {
-                console.log('Kolom idsubsls atau kdsubsls tidak ditemukan');
+            if (idsubslsIndex === -1) {
+                console.log('Kolom idsubsls tidak ditemukan');
                 return jsonData;
             }
             
@@ -1074,26 +1077,24 @@
                     const idsubsls = newRow[idsubslsIndex];
                     
                     // Cek jika idsubsls ada dan panjangnya 14 digit angka
-                    if (idsubsls && idsubsls.toString().length === 14 && !isNaN(idsubsls)) {
+                    if (idsubsls && idsubsls.toString().length === 14 && /^\d+$/.test(idsubsls.toString())) {
                         // Koreksi idsubsls: tambahkan '00' di akhir
                         const idsubslsTerkoreksi = idsubsls.toString() + '00';
                         newRow[idsubslsIndex] = idsubslsTerkoreksi;
                         
-                        // Koreksi kdsubsls: set ke '00'
-                        if (newRow.length > kdsubslsIndex) {
+                        // Koreksi kdsubsls jika kolom ada
+                        if (kdsubslsIndex !== -1 && newRow.length > kdsubslsIndex) {
                             newRow[kdsubslsIndex] = '00';
                         }
                         
                         dikoreksiCount++;
-                        console.log(`Dikoreksi: ${idsubsls} -> ${idsubslsTerkoreksi}, kdsubsls -> 00`);
+                        console.log(`Dikoreksi: ${idsubsls} -> ${idsubslsTerkoreksi}`);
                     }
                 }
                 return newRow;
             });
             
-            if (dikoreksiCount > 0) {
-                console.log(`Berhasil mengoreksi ${dikoreksiCount} record dengan idsubsls 14 digit`);
-            }
+            console.log(`Total dikoreksi: ${dikoreksiCount} record`);
             
             return [headers, ...dataTerkoreksi];
         }
