@@ -303,7 +303,7 @@
         const correctMetadata = [
             { variable: 'id', label: 'frs id', type: 'integer', required: true },
             { variable: 'semester', label: 'semester', type: 'character', required: true },
-            { variable: 'idsubsls', label: 'idsubsls 16 digit', type: 'character', required: true, length: 16 },
+            { variable: 'idsubsls', label: 'idsubsls 16 digit karakter angka', type: 'character', required: true, length: 16 },
             { variable: 'nmsls', label: 'nama sls', type: 'character', required: true },
             { variable: 'nama_ketua', label: 'nama ketua SLS', type: 'character', required: false },
             { variable: 'jenis', label: 'jenis SLS', type: 'character', required: true },
@@ -346,7 +346,7 @@
             }
             
             if (kodeKab.length !== 4 || isNaN(kodeKab)) {
-                alert('Kode kabupaten/kota harus berupa 4 digit angka!');
+                alert('Kode kabupaten/kota harus berupa 4 digit karakter angka!');
                 return;
             }
             
@@ -594,7 +594,7 @@
                             if (metadata.variable === 'idsubsls' && metadata.length) {
                                 const valueStr = value.toString();
                                 if (valueStr.length !== metadata.length || isNaN(valueStr)) {
-                                    errorDetails[metadata.variable].push(`Baris ${rowNum}: "${value}" harus ${metadata.length} digit angka`);
+                                    errorDetails[metadata.variable].push(`Baris ${rowNum}: "${value}" harus ${metadata.length} digit karakter angka`);
                                     totalErrors++;
                                 }
                             }
@@ -603,7 +603,7 @@
                             if (metadata.variable === 'kdprov' && metadata.length) {
                                 const valueStr = value.toString();
                                 if (valueStr.length !== metadata.length) {
-                                    errorDetails[metadata.variable].push(`Baris ${rowNum}: "${value}" harus ${metadata.length} digit karakter`);
+                                    errorDetails[metadata.variable].push(`Baris ${rowNum}: "${value}" harus ${metadata.length} digit karakter angka`);
                                     totalErrors++;
                                 }
                             }
@@ -611,7 +611,7 @@
                             if (metadata.variable === 'kdkab' && metadata.length) {
                                 const valueStr = value.toString();
                                 if (valueStr.length !== metadata.length) {
-                                    errorDetails[metadata.variable].push(`Baris ${rowNum}: "${value}" harus ${metadata.length} digit karakter`);
+                                    errorDetails[metadata.variable].push(`Baris ${rowNum}: "${value}" harus ${metadata.length} digit karakter angka`);
                                     totalErrors++;
                                 }
                             }
@@ -619,7 +619,7 @@
                             if (metadata.variable === 'kdkec' && metadata.length) {
                                 const valueStr = value.toString();
                                 if (valueStr.length !== metadata.length) {
-                                    errorDetails[metadata.variable].push(`Baris ${rowNum}: "${value}" harus ${metadata.length} digit karakter`);
+                                    errorDetails[metadata.variable].push(`Baris ${rowNum}: "${value}" harus ${metadata.length} digit karakter angka`);
                                     totalErrors++;
                                 }
                             }
@@ -627,7 +627,7 @@
                             if (metadata.variable === 'kddesa' && metadata.length) {
                                 const valueStr = value.toString();
                                 if (valueStr.length !== metadata.length) {
-                                    errorDetails[metadata.variable].push(`Baris ${rowNum}: "${value}" harus ${metadata.length} digit karakter`);
+                                    errorDetails[metadata.variable].push(`Baris ${rowNum}: "${value}" harus ${metadata.length} digit karakter angka`);
                                     totalErrors++;
                                 }
                             }
@@ -635,7 +635,7 @@
                             if (metadata.variable === 'kdsls' && metadata.length) {
                                 const valueStr = value.toString();
                                 if (valueStr.length !== metadata.length) {
-                                    errorDetails[metadata.variable].push(`Baris ${rowNum}: "${value}" harus ${metadata.length} digit karakter`);
+                                    errorDetails[metadata.variable].push(`Baris ${rowNum}: "${value}" harus ${metadata.length} digit karakter angka`);
                                     totalErrors++;
                                 }
                             }
@@ -643,7 +643,7 @@
                             if (metadata.variable === 'kdsubsls' && metadata.length) {
                                 const valueStr = value.toString();
                                 if (valueStr.length !== metadata.length) {
-                                    errorDetails[metadata.variable].push(`Baris ${rowNum}: "${value}" harus ${metadata.length} digit karakter`);
+                                    errorDetails[metadata.variable].push(`Baris ${rowNum}: "${value}" harus ${metadata.length} digit karakter angka`);
                                     totalErrors++;
                                 }
                             }
