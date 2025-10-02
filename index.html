@@ -365,6 +365,30 @@
         let correctedData = null;
         let correctedWorkbook = null;
         
+        // VARIABEL BARU: Untuk melacak apakah ada variabel idsls yang dikoreksi
+        let idslsCorrected = false;
+        
+        // FUNGSI BARU: Koreksi variabel idsls menjadi idsubsls
+        function koreksiVariabelIdsls(jsonData) {
+            if (!jsonData || jsonData.length < 2) return jsonData;
+            
+            const headers = jsonData[0];
+            const dataRows = jsonData.slice(1);
+            
+            // Cek apakah ada variabel idsls di headers
+            const idslsIndex = headers.indexOf('idsls');
+            
+            if (idslsIndex !== -1) {
+                // Ubah nama variabel idsls menjadi idsubsls
+                headers[idslsIndex] = 'idsubsls';
+                idslsCorrected = true;
+                
+                console.log(`✅ Variabel 'idsls' dikoreksi menjadi 'idsubsls'`);
+            }
+            
+            return [headers, ...dataRows];
+        }
+        
         // FUNGSI BARU: Koreksi idsubsls 14 digit
         function koreksiIdsubsls14Digit(jsonData) {
             if (!jsonData || jsonData.length < 2) return jsonData;
@@ -422,6 +446,9 @@
                 return;
             }
             
+            // Reset status koreksi
+            idslsCorrected = false;
+            
             // Tampilkan loading indicator
             document.getElementById('loadingIndicator').style.display = 'block';
             document.getElementById('resultSection').style.display = 'none';
@@ -477,13 +504,16 @@
                     correctedWorkbook = workbook;
                     correctedData = lkData;
                     
-                    // KOREKSI IDSUBSLS 14 DIGIT - TETAP DILAKUKAN
+                    // KOREKSI VARIABEL IDSLS JIKA ADA - TETAP DILAKUKAN
                     const dataSebelumKoreksi = JSON.stringify(lkData);
-                    correctedData = koreksiIdsubsls14Digit(lkData);
+                    correctedData = koreksiVariabelIdsls(lkData);
+                    
+                    // KOREKSI IDSUBSLS 14 DIGIT - TETAP DILAKUKAN
+                    correctedData = koreksiIdsubsls14Digit(correctedData);
                     const dataSetelahKoreksi = JSON.stringify(correctedData);
                     
                     // TAMPILKAN TOMBOL DOWNLOAD JIKA ADA PERUBAHAN
-                    if (dataSebelumKoreksi !== dataSetelahKoreksi) {
+                    if (dataSebelumKoreksi !== dataSetelahKoreksi || idslsCorrected) {
                         const correctedWorksheet = XLSX.utils.aoa_to_sheet(correctedData);
                         correctedWorkbook.Sheets[firstSheetName] = correctedWorksheet;
                         document.getElementById('downloadButton').style.display = 'block';
@@ -496,7 +526,7 @@
                     document.getElementById('resultSection').style.display = 'block';
                     
                     // LAKUKAN PENGEcekan DENGAN DATA ASLI (BUKAN YANG SUDAH DIKOREKSI)
-                    // agar error tetap muncul untuk idsubsls 14 digit
+                    // agar error tetap muncul untuk idsubsls 14 digit dan variabel idsls
                     checkFileFormat(lkFile, kodeKab);
                     checkVariables(lkData); // DATA ASLI
                     checkDataTypesAndCompleteness(lkData); // DATA ASLI - agar error muncul
@@ -548,14 +578,36 @@
             let successCount = 0;
             let extraVariables = [];
             
-            // Cek variabel yang ada di file tapi tidak ada di metadata
+            // CEK KHUSUS: Deteksi variabel idsls yang seharusnya idsubsls
+            let idslsDetected = false;
+            let idslsIndex = -1;
+            
             headers.forEach(header => {
                 const found = correctMetadata.find(metadata => metadata.variable === header);
                 if (!found) {
-                    extraVariables.push(header);
-                    errorCount++;
+                    // Cek apakah ini variabel idsls yang salah
+                    if (header === 'idsls') {
+                        idslsDetected = true;
+                        idslsIndex = headers.indexOf(header);
+                    } else {
+                        extraVariables.push(header);
+                        errorCount++;
+                    }
                 }
             });
+            
+            // TAMPILKAN PESAN KHUSUS JIKA ADA VARIABEL IDSLS
+            if (idslsDetected) {
+                variableCheckDetails.innerHTML += `
+                    <div class="result-item error">
+                        <div class="result-title">✗ Variabel 'idsls' ditemukan</div>
+                        <div>Variabel 'idsls' seharusnya bernama 'idsubsls'</div>
+                        <div><strong>File yang sudah dikoreksi tersedia untuk di-download (tombol di bawah laporan)</strong></div>
+                        <div>Variabel 'idsls' akan dikoreksi menjadi 'idsubsls' di file output</div>
+                    </div>
+                `;
+                errorCount++;
+            }
             
             // Bandingkan dengan metadata yang benar
             correctMetadata.forEach(metadata => {
@@ -566,10 +618,18 @@
                 
                 if (index === -1) {
                     // Variabel tidak ditemukan
-                    statusClass = 'error';
-                    statusIcon = '✗';
-                    message = 'Variabel tidak ditemukan dalam file';
-                    errorCount++;
+                    // Khusus untuk idsubsls, cek apakah ada idsls sebagai gantinya
+                    if (metadata.variable === 'idsubsls' && idslsDetected) {
+                        statusClass = 'warning';
+                        statusIcon = '⚠';
+                        message = 'Variabel ditemukan dengan nama "idsls" (akan dikoreksi menjadi "idsubsls")';
+                        successCount++; // Dianggap berhasil karena akan dikoreksi
+                    } else {
+                        statusClass = 'error';
+                        statusIcon = '✗';
+                        message = 'Variabel tidak ditemukan dalam file';
+                        errorCount++;
+                    }
                 } else {
                     // Variabel ditemukan
                     statusClass = 'success';
@@ -611,6 +671,10 @@
                         `<div class="error">PERINGATAN: Jumlah variabel tidak sesuai! File memiliki ${totalVariablesInFile} variabel, seharusnya ${expectedVariables}</div>` : 
                         `<div class="success">✓ Jumlah variabel sesuai</div>`
                     }
+                    ${idslsDetected ? 
+                        `<div class="warning">⚠ Variabel 'idsls' akan dikoreksi menjadi 'idsubsls' di file output</div>` : 
+                        ''
+                    }
                 </div>
             `;
         }
@@ -636,6 +700,10 @@
             let idsubsls14DigitCount = 0;
             let idsubsls14DigitErrors = [];
             
+            // VARIABLE BARU UNTUK DETEKSI VARIABEL IDSLS
+            let idslsDetected = headers.includes('idsls');
+            let idslsIndex = headers.indexOf('idsls');
+            
             // Inisialisasi objek error dan warning details
             correctMetadata.forEach(metadata => {
                 errorDetails[metadata.variable] = [];
@@ -644,7 +712,12 @@
             
             // Cek setiap variabel metadata
             correctMetadata.forEach(metadata => {
-                const colIndex = headers.indexOf(metadata.variable);
+                let colIndex = headers.indexOf(metadata.variable);
+                
+                // KHUSUS UNTUK IDSUBSLS: Jika tidak ditemukan, cek apakah ada idsls
+                if (metadata.variable === 'idsubsls' && colIndex === -1 && idslsDetected) {
+                    colIndex = idslsIndex; // Gunakan index idsls sebagai gantinya
+                }
                 
                 // Jika kolom tidak ditemukan, tambahkan error
                 if (colIndex === -1) {
@@ -767,6 +840,17 @@
                 });
             });
             
+            // TAMPILKAN INFO KOREKSI JIKA ADA VARIABEL IDSLS
+            if (idslsDetected) {
+                dataTypeCheckDetails.innerHTML += `
+                    <div class="result-item warning">
+                        <div class="result-title">⚠ Variabel 'idsls' ditemukan (seharusnya 'idsubsls')</div>
+                        <div><strong>File yang sudah dikoreksi tersedia untuk di-download (tombol di bawah laporan)</strong></div>
+                        <div>Variabel 'idsls' akan dikoreksi menjadi 'idsubsls' di file output</div>
+                    </div>
+                `;
+            }
+            
             // TAMPILKAN INFO KOREKSI JIKA ADA IDSUBSLS 14 DIGIT
             if (idsubsls14DigitCount > 0) {
                 dataTypeCheckDetails.innerHTML += `
@@ -826,6 +910,7 @@
                 <div class="result-item ${totalErrors > 0 ? 'error' : (totalWarnings > 0 ? 'warning' : 'success')}">
                     <div class="result-title">Ringkasan Tipe Data dan Kelengkapan</div>
                     <div>Total error: ${totalErrors}, Total warning: ${totalWarnings}</div>
+                    ${idslsDetected ? `<div>Termasuk variabel 'idsls' yang akan dikoreksi menjadi 'idsubsls'</div>` : ''}
                     ${idsubsls14DigitCount > 0 ? `<div>Termasuk ${idsubsls14DigitCount} idsubsls 14 digit yang dapat dikoreksi</div>` : ''}
                 </div>
             `;
@@ -952,12 +1037,17 @@
             const masterHeaders = masterWilayahData[0];
             
             // Cari kolom idsubsls di kedua file
-            const lkIdsubslsIndex = lkHeaders.indexOf('idsubsls');
+            // KHUSUS: Untuk LK, cek apakah ada idsls sebagai gantinya
+            let lkIdsubslsIndex = lkHeaders.indexOf('idsubsls');
+            if (lkIdsubslsIndex === -1) {
+                lkIdsubslsIndex = lkHeaders.indexOf('idsls'); // Gunakan idsls jika idsubsls tidak ditemukan
+            }
+            
             const masterIdsubslsIndex = masterHeaders.indexOf('idsubsls');
             
             // Jika kolom idsubsls tidak ditemukan di salah satu file
             if (lkIdsubslsIndex === -1) {
-                masterCheckDetails.innerHTML = '<div class="result-item error"><div class="result-title">✗ Kolom idsubsls tidak ditemukan di file LK</div></div>';
+                masterCheckDetails.innerHTML = '<div class="result-item error"><div class="result-title">✗ Kolom idsubsls/idsls tidak ditemukan di file LK</div></div>';
                 return;
             }
             
@@ -1218,9 +1308,13 @@
                     <div><strong>Pengecekan Duplikat:</strong></div>
                     <div>• <strong>LK</strong>: Dicek berdasarkan idsubsls lengkap (16 digit)</div>
                     <div>• <strong>Master</strong>: Dicek berdasarkan idsls (14 digit pertama)</div>
+                    <div><strong>Contoh Duplikat di LK:</strong></div>
+                    <div>• "1101010001000100"</div>
+                    <div>• "1101010001000100" → <strong>DUPLIKAT</strong> (16 digit sama)</div>
                     <div><strong>Contoh Duplikat di Master:</strong></div>
-                    <div>• "1101010001000100" → idsls: "11010100010001"</div>
-                    <div>• "1101010001000200" → idsls: "11010100010001" → <strong>DUPLIKAT</strong> (14 digit sama)</div>
+                    <div>• "11010100010001"</div>
+                    <div>• "11010100010001" → <strong>DUPLIKAT</strong> (14 digit sama)</div>
+
                 </div>
             `;
             
