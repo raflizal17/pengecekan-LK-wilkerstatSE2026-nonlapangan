@@ -454,6 +454,45 @@
             return [headers, ...dataTerkoreksi];
         }
 
+        // FUNGSI BARU: Koreksi tipe data klas menjadi integer
+        function koreksiTipeDataKlas(jsonData) {
+            if (!jsonData || jsonData.length < 2) return jsonData;
+            
+            const headers = jsonData[0];
+            const dataRows = jsonData.slice(1);
+            const klasIndex = headers.indexOf('klas');
+            
+            if (klasIndex === -1) return jsonData;
+            
+            let dikoreksiCount = 0;
+            const dataTerkoreksi = [];
+            
+            for (let i = 0; i < dataRows.length; i++) {
+                const row = [...dataRows[i]];
+                
+                if (row.length > klasIndex) {
+                    const klasValue = row[klasIndex];
+                    
+                    // Jika nilai klas bukan integer, konversi ke integer
+                    if (klasValue !== null && klasValue !== undefined && klasValue !== '') {
+                        const intValue = parseInt(klasValue);
+                        if (!isNaN(intValue) && intValue.toString() !== klasValue.toString()) {
+                            row[klasIndex] = intValue;
+                            dikoreksiCount++;
+                            console.log(`✅ Dikoreksi klas: "${klasValue}" -> ${intValue}`);
+                        }
+                    }
+                }
+                dataTerkoreksi.push(row);
+            }
+            
+            if (dikoreksiCount > 0) {
+                console.log(`✅ Dikoreksi ${dikoreksiCount} record tipe data klas`);
+            }
+            
+            return [headers, ...dataTerkoreksi];
+        }
+
         document.getElementById('checkButton').addEventListener('click', function() {
             const lkFile = document.getElementById('lkFile').files[0];
             const masterFile = document.getElementById('masterFile').files[0];
@@ -533,6 +572,10 @@
                     
                     // KOREKSI IDSUBSLS 14 DIGIT - DENGAN PERBAIKAN BARU
                     correctedData = koreksiIdsubsls14Digit(correctedData);
+                    
+                    // KOREKSI TIPE DATA KLAS - FUNGSI BARU
+                    correctedData = koreksiTipeDataKlas(correctedData);
+                    
                     const dataSetelahKoreksi = JSON.stringify(correctedData);
                     
                     // TAMPILKAN TOMBOL DOWNLOAD JIKA ADA PERUBAHAN
@@ -611,7 +654,7 @@
                     // Cek apakah ini variabel idsls yang salah
                     if (header === 'idsls') {
                         idslsDetected = true;
-                        idslsIndex = headers.indexOf(header);
+                        idslsIndex = headers.indexOf('header');
                     } else {
                         extraVariables.push(header);
                         errorCount++;
@@ -727,6 +770,10 @@
             let idslsDetected = headers.includes('idsls');
             let idslsIndex = headers.indexOf('idsls');
             
+            // VARIABLE BARU UNTUK DETEKSI TIPE DATA KLAS
+            let klasNonIntegerCount = 0;
+            let klasNonIntegerErrors = [];
+            
             // Inisialisasi objek error dan warning details
             correctMetadata.forEach(metadata => {
                 errorDetails[metadata.variable] = [];
@@ -773,6 +820,12 @@
                                 if (isNaN(Number(value)) || !Number.isInteger(Number(value))) {
                                     errorDetails[metadata.variable].push(`Baris ${rowNum}: "${value}" bukan integer`);
                                     totalErrors++;
+                                    
+                                    // Catat khusus untuk klas yang bukan integer
+                                    if (metadata.variable === 'klas') {
+                                        klasNonIntegerCount++;
+                                        klasNonIntegerErrors.push(`Baris ${rowNum}: "${value}" bukan integer`);
+                                    }
                                 }
                             }
                             
@@ -890,6 +943,22 @@
                 `;
             }
             
+            // TAMPILKAN INFO KOREKSI JIKA ADA KLAS BUKAN INTEGER
+            if (klasNonIntegerCount > 0) {
+                dataTypeCheckDetails.innerHTML += `
+                    <div class="result-item warning">
+                        <div class="result-title">⚠ Ditemukan ${klasNonIntegerCount} data klas bukan integer</div>
+                        <div><strong>File yang sudah dikoreksi tersedia untuk di-download (tombol di bawah laporan)</strong></div>
+                        <div>Data klas akan dikonversi otomatis ke integer di file output</div>
+                        <div class="error-details" style="display: none;">
+                            <strong>Detail klas bukan integer:</strong><br>
+                            ${klasNonIntegerErrors.join('<br>')}
+                        </div>
+                        <span class="toggle-details" onclick="toggleErrorDetails(this)">Tampilkan detail</span>
+                    </div>
+                `;
+            }
+            
             // Tampilkan hasil pengecekan untuk setiap variabel
             correctMetadata.forEach(metadata => {
                 const errors = errorDetails[metadata.variable];
@@ -934,6 +1003,7 @@
                     <div>Total error: ${totalErrors}, Total warning: ${totalWarnings}</div>
                     ${idslsDetected ? `<div>Termasuk variabel 'idsls' yang akan dikoreksi menjadi 'idsubsls'</div>` : ''}
                     ${idsubsls14DigitCount > 0 ? `<div>Termasuk ${idsubsls14DigitCount} idsubsls 14 digit yang dapat dikoreksi</div>` : ''}
+                    ${klasNonIntegerCount > 0 ? `<div>Termasuk ${klasNonIntegerCount} data klas yang akan dikonversi ke integer</div>` : ''}
                 </div>
             `;
         }
@@ -1058,48 +1128,64 @@
             const lkHeaders = lkData[0];
             const masterHeaders = masterWilayahData[0];
             
-            // Cari kolom idsubsls di kedua file
-            // KHUSUS: Untuk LK, cek apakah ada idsls sebagai gantinya
+            // Cari kolom idsubsls di kedua file, bisa idsubsls atau idsls
             let lkIdsubslsIndex = lkHeaders.indexOf('idsubsls');
             if (lkIdsubslsIndex === -1) {
-                lkIdsubslsIndex = lkHeaders.indexOf('idsls'); // Gunakan idsls jika idsubsls tidak ditemukan
+                lkIdsubslsIndex = lkHeaders.indexOf('idsls');
             }
             
-            const masterIdsubslsIndex = masterHeaders.indexOf('idsubsls');
+            let masterIdsubslsIndex = masterHeaders.indexOf('idsubsls');
+            if (masterIdsubslsIndex === -1) {
+                masterIdsubslsIndex = masterHeaders.indexOf('idsls');
+            }
             
-            // Jika kolom idsubsls tidak ditemukan di salah satu file
+            // Cari kolom kdsubsls di LK
+            const lkKdsubslsIndex = lkHeaders.indexOf('kdsubsls');
+            
+            // Jika kolom idsubsls/idsls tidak ditemukan di salah satu file
             if (lkIdsubslsIndex === -1) {
                 masterCheckDetails.innerHTML = '<div class="result-item error"><div class="result-title">✗ Kolom idsubsls/idsls tidak ditemukan di file LK</div></div>';
                 return;
             }
             
             if (masterIdsubslsIndex === -1) {
-                masterCheckDetails.innerHTML = '<div class="result-item error"><div class="result-title">✗ Kolom idsubsls tidak ditemukan di file Master Wilayah</div></div>';
+                masterCheckDetails.innerHTML = '<div class="result-item error"><div class="result-title">✗ Kolom idsubsls/idsls tidak ditemukan di file Master Wilayah</div></div>';
                 return;
             }
             
             // Hitung total records
-            const totalLkRecords = lkData.length - 1; // Exclude header
-            const totalMasterRecords = masterWilayahData.length - 1; // Exclude header
+            const totalLkRecords = lkData.length - 1;
+            const totalMasterRecords = masterWilayahData.length - 1;
             
-            // Ambil data idsls (14 digit pertama) dari master wilayah
-            const masterIdslsSet = new Set();
-            const masterIdslsToFullMap = new Map();
-            const masterIdslsCount = new Map(); // Untuk hitung duplikat idsls di master
-            const masterDuplicates = []; // Simpan data duplikat idsls di master
+            // DATA UNTUK MASTER WILAYAH
+            const masterIdslsSet = new Set(); // 14 digit unique
+            const masterIdslsCount = new Map(); // Untuk hitung duplikat 14 digit
+            const masterDuplicates14 = []; // Duplikat idsls 14 digit di master
             
+            // DATA UNTUK LK
+            const lkIdslsSet = new Set(); // 14 digit unique untuk matching
+            const lkIdsubsls16Set = new Set(); // 16 digit unique setelah koreksi
+            const lkIdsubsls16Count = new Map(); // Untuk hitung duplikat 16 digit di LK
+            const lkDuplicates16 = []; // Duplikat idsubsls 16 digit di LK
+            
+            // Untuk evaluasi matching
+            let lkToMasterMatch = 0;
+            const lkUnmatched = [];
+            let masterToLkMatch = 0;
+            const masterUnmatched = [];
+            
+            // PROSES DATA MASTER WILAYAH
             for (let i = 1; i < masterWilayahData.length; i++) {
                 if (masterWilayahData[i].length > masterIdsubslsIndex) {
                     const idsubsls = masterWilayahData[i][masterIdsubslsIndex];
                     if (idsubsls) {
                         const idsubslsStr = idsubsls.toString().trim();
-                        // Ambil idsls (14 digit pertama)
+                        // Ambil 14 digit pertama
                         const idsls = idsubslsStr.substring(0, 14);
-                        if (idsls.length === 14) {
+                        if (idsls.length === 14 && /^\d+$/.test(idsls)) {
                             masterIdslsSet.add(idsls);
-                            masterIdslsToFullMap.set(idsls, idsubslsStr);
                             
-                            // Hitung duplikat idsls di master
+                            // Hitung duplikat 14 digit di master
                             if (masterIdslsCount.has(idsls)) {
                                 masterIdslsCount.set(idsls, masterIdslsCount.get(idsls) + 1);
                             } else {
@@ -1110,99 +1196,88 @@
                 }
             }
             
-            // Identifikasi duplikat idsls di master
+            // Identifikasi duplikat 14 digit di master
             masterIdslsCount.forEach((count, idsls) => {
                 if (count > 1) {
-                    const fullId = masterIdslsToFullMap.get(idsls);
-                    masterDuplicates.push({
+                    masterDuplicates14.push({
                         idsls: idsls,
-                        count: count,
-                        exampleFullId: fullId
+                        count: count
                     });
                 }
             });
             
-            // Ambil data idsls (14 digit pertama) dari file LK untuk pencocokan master
-            const lkIdslsSet = new Set();
-            const lkIdslsDetails = new Map(); // Simpan detail untuk reporting
-            
-            // Pengecekan duplikat berdasarkan idsubsls lengkap (16 digit) dari LK
-            const lkIdsubslsCount = new Map(); // Untuk hitung duplikat idsubsls lengkap
-            const lkDuplicates = []; // Simpan data duplikat idsubsls lengkap
-            
+            // PROSES DATA LK
             for (let i = 1; i < lkData.length; i++) {
                 if (lkData[i].length > lkIdsubslsIndex) {
                     const idsubsls = lkData[i][lkIdsubslsIndex];
                     if (idsubsls) {
                         const idsubslsStr = idsubsls.toString().trim();
                         
-                        // Untuk pencocokan master: ambil idsls (14 digit pertama)
-                        const idsls = idsubslsStr.substring(0, 14);
-                        if (idsls.length === 14) {
-                            lkIdslsSet.add(idsls);
-                            lkIdslsDetails.set(idsls, {
-                                fullId: idsubslsStr,
-                                rowNumber: i + 1,
-                                length: idsubslsStr.length
-                            });
-                        }
-                        
-                        // Untuk pengecekan duplikat: gunakan idsubsls lengkap (16 digit)
-                        if (lkIdsubslsCount.has(idsubslsStr)) {
-                            lkIdsubslsCount.set(idsubslsStr, lkIdsubslsCount.get(idsubslsStr) + 1);
+                        // Ambil 14 digit pertama untuk matching
+                        const idsls14Digit = idsubslsStr.substring(0, 14);
+                        if (idsls14Digit.length === 14 && /^\d+$/.test(idsls14Digit)) {
+                            lkIdslsSet.add(idsls14Digit);
+                            
+                            // Evaluasi matching LK -> Master (14 digit)
+                            if (masterIdslsSet.has(idsls14Digit)) {
+                                lkToMasterMatch++;
+                            } else {
+                                lkUnmatched.push(`Baris ${i + 1}: ${idsubslsStr} (idsls: ${idsls14Digit})`);
+                            }
+                            
+                            // Hitung 16 digit setelah koreksi untuk duplikat di LK
+                            let kdsubsls = '';
+                            if (lkKdsubslsIndex !== -1 && lkData[i].length > lkKdsubslsIndex) {
+                                kdsubsls = lkData[i][lkKdsubslsIndex] ? lkData[i][lkKdsubslsIndex].toString().trim() : '';
+                            }
+                            
+                            // Buat idsubsls 16 digit lengkap
+                            let idsubsls16 = '';
+                            if (idsubslsStr.length === 16) {
+                                idsubsls16 = idsubslsStr;
+                            } else if (idsubslsStr.length === 14) {
+                                if (kdsubsls && kdsubsls !== '' && kdsubsls.length === 2 && /^\d+$/.test(kdsubsls)) {
+                                    idsubsls16 = idsls14Digit + kdsubsls;
+                                } else {
+                                    idsubsls16 = idsls14Digit + '00';
+                                }
+                            }
+                            
+                            if (idsubsls16.length === 16) {
+                                lkIdsubsls16Set.add(idsubsls16);
+                                
+                                // Hitung duplikat 16 digit di LK
+                                if (lkIdsubsls16Count.has(idsubsls16)) {
+                                    lkIdsubsls16Count.set(idsubsls16, lkIdsubsls16Count.get(idsubsls16) + 1);
+                                } else {
+                                    lkIdsubsls16Count.set(idsubsls16, 1);
+                                }
+                            }
                         } else {
-                            lkIdsubslsCount.set(idsubslsStr, 1);
+                            lkUnmatched.push(`Baris ${i + 1}: ${idsubslsStr} (bukan 14 digit angka)`);
                         }
+                    } else {
+                        lkUnmatched.push(`Baris ${i + 1}: Data kosong`);
                     }
                 }
             }
             
-            // Identifikasi duplikat idsubsls lengkap di LK
-            lkIdsubslsCount.forEach((count, idsubslsFull) => {
+            // Identifikasi duplikat 16 digit di LK
+            lkIdsubsls16Count.forEach((count, idsubsls16) => {
                 if (count > 1) {
-                    // Cari row number untuk contoh
-                    let exampleRow = '';
-                    for (let i = 1; i < lkData.length; i++) {
-                        if (lkData[i].length > lkIdsubslsIndex) {
-                            const currentIdsubsls = lkData[i][lkIdsubslsIndex];
-                            if (currentIdsubsls && currentIdsubsls.toString().trim() === idsubslsFull) {
-                                exampleRow = i + 1;
-                                break;
-                            }
-                        }
-                    }
-                    
-                    lkDuplicates.push({
-                        idsubslsFull: idsubslsFull,
-                        count: count,
-                        exampleRow: exampleRow
+                    lkDuplicates16.push({
+                        idsubsls16: idsubsls16,
+                        count: count
                     });
                 }
             });
             
-            // 1. Hitung match dari LK ke Master (idsls LK yang ada di Master)
-            let lkToMasterMatch = 0;
-            const lkUnmatched = [];
-            
-            lkIdslsSet.forEach(idsls => {
-                if (masterIdslsSet.has(idsls)) {
-                    lkToMasterMatch++;
-                } else {
-                    const detail = lkIdslsDetails.get(idsls);
-                    lkUnmatched.push(`Baris ${detail.rowNumber}: ${detail.fullId} (idsls: ${idsls})`);
-                }
-            });
-            
-            // 2. Hitung match dari Master ke LK (idsls Master yang ada di LK)
-            let masterToLkMatch = 0;
-            const masterUnmatched = [];
-            
+            // Hitung match dari Master ke LK (14 digit)
             masterIdslsSet.forEach(idsls => {
                 if (lkIdslsSet.has(idsls)) {
                     masterToLkMatch++;
                 } else {
-                    const fullId = masterIdslsToFullMap.get(idsls);
-                    masterUnmatched.push(`${idsls} (lengkap: ${fullId})`);
+                    masterUnmatched.push(`${idsls}`);
                 }
             });
             
@@ -1213,17 +1288,27 @@
             // Tampilkan hasil pencocokan
             let resultHTML = '';
             
-            // 0. Pengecekan Duplikat idsubsls lengkap di LK
-            if (lkDuplicates.length > 0) {
+            // Informasi kolom
+            resultHTML += `
+                <div class="result-item info" style="background-color: #e8f4fc; border-left: 5px solid #3498db;">
+                    <div class="result-title">ℹ Informasi Kolom yang Digunakan</div>
+                    <div>Matching dilakukan berdasarkan <strong>idsls (14 digit pertama)</strong></div>
+                </div>
+            `;
+            
+            // 1. Duplikat di LK (16 digit)
+            if (lkDuplicates16.length > 0) {
+                const totalDuplikatRecords16 = lkDuplicates16.reduce((sum, dup) => sum + (dup.count - 1), 0);
+                
                 resultHTML += `
                     <div class="result-item error">
-                        <div class="result-title">✗ Ditemukan ${lkDuplicates.length} idsubsls duplikat di LK</div>
-                        <div>Total records dengan idsubsls duplikat: ${lkDuplicates.reduce((sum, dup) => sum + (dup.count - 1), 0)}</div>
-                        <span class="toggle-details" onclick="toggleErrorDetails(this)">Tampilkan detail duplikat</span>
+                        <div class="result-title">✗ Ditemukan ${lkDuplicates16.length} idsubsls duplikat di LK</div>
+                        <div>Total records dengan idsubsls duplikat: ${totalDuplikatRecords16}</div>
+                        <span class="toggle-details" onclick="toggleErrorDetails(this)">Tampilkan detail</span>
                         <div class="error-details" style="display: none;">
-                            <strong>Detail idsubsls duplikat (16 digit lengkap):</strong><br>
-                            ${lkDuplicates.map(dup => 
-                                `Idsubsls: ${dup.idsubslsFull} (${dup.count}x) - Contoh: Baris ${dup.exampleRow}`
+                            <strong>Detail idsubsls duplikat (16 digit) di LK:</strong><br>
+                            ${lkDuplicates16.map(dup => 
+                                `idsubsls: ${dup.idsubsls16} (${dup.count}x)`
                             ).join('<br>')}
                         </div>
                     </div>
@@ -1232,22 +1317,24 @@
                 resultHTML += `
                     <div class="result-item success">
                         <div class="result-title">✓ Tidak ada idsubsls duplikat di LK</div>
-                        <div>Semua idsubsls (16 digit) unik</div>
+                        <div>Semua idsubsls (16 digit) unik di file LK</div>
                     </div>
                 `;
             }
             
-            // 0b. Pengecekan Duplikat idsls (14 digit) di Master
-            if (masterDuplicates.length > 0) {
+            // 2. Duplikat di Master (14 digit)
+            if (masterDuplicates14.length > 0) {
+                const totalDuplikatRecords14 = masterDuplicates14.reduce((sum, dup) => sum + (dup.count - 1), 0);
+                
                 resultHTML += `
                     <div class="result-item error">
-                        <div class="result-title">✗ Ditemukan ${masterDuplicates.length} idsls duplikat di Master</div>
-                        <div>Total records dengan idsls duplikat: ${masterDuplicates.reduce((sum, dup) => sum + (dup.count - 1), 0)}</div>
-                        <span class="toggle-details" onclick="toggleErrorDetails(this)">Tampilkan detail duplikat</span>
+                        <div class="result-title">✗ Ditemukan ${masterDuplicates14.length} idsls duplikat di Master</div>
+                        <div>Total records dengan idsls duplikat: ${totalDuplikatRecords14}</div>
+                        <span class="toggle-details" onclick="toggleErrorDetails(this)">Tampilkan detail</span>
                         <div class="error-details" style="display: none;">
                             <strong>Detail idsls duplikat (14 digit) di Master:</strong><br>
-                            ${masterDuplicates.map(dup => 
-                                `Idsls: ${dup.idsls} (${dup.count}x) - Contoh: ${dup.exampleFullId}`
+                            ${masterDuplicates14.map(dup => 
+                                `idsls: ${dup.idsls} (${dup.count}x)`
                             ).join('<br>')}
                         </div>
                     </div>
@@ -1261,26 +1348,26 @@
                 `;
             }
             
-            // 1. Pencocokan dari LK ke Master
+            // 3. Pencocokan LK -> Master
             resultHTML += `
                 <div class="result-item ${lkMatchPercentage === 100 ? 'success' : (lkMatchPercentage >= 95 ? 'warning' : 'error')}">
-                    <div class="result-title">${lkMatchPercentage === 100 ? '✓' : (lkMatchPercentage >= 95 ? '⚠' : '✗')} Pencocokan dari LK ke Master</div>
+                    <div class="result-title">${lkMatchPercentage === 100 ? '✓' : (lkMatchPercentage >= 95 ? '⚠' : '✗')} Matching dari LK ke Master</div>
                     <div><strong>Berdasarkan idsls (14 digit pertama)</strong></div>
-                    <div>${lkToMasterMatch} dari ${totalLkRecords} idsls di LK ditemukan di master (${lkMatchPercentage}%)</div>
+                    <div>${lkToMasterMatch} dari ${totalLkRecords} records di LK ditemukan di master (${lkMatchPercentage}%)</div>
                     ${lkUnmatched.length > 0 ? `
-                        <span class="toggle-details" onclick="toggleErrorDetails(this)">Tampilkan ${lkUnmatched.length} idsls yang tidak ditemukan di master</span>
+                        <span class="toggle-details" onclick="toggleErrorDetails(this)">Tampilkan ${lkUnmatched.length} records yang tidak ditemukan di master</span>
                         <div class="error-details" style="display: none;">
-                            <strong>Idsls di LK yang tidak ada di master:</strong><br>
+                            <strong>Records di LK yang tidak ada di master:</strong><br>
                             ${lkUnmatched.join('<br>')}
                         </div>
                     ` : ''}
                 </div>
             `;
             
-            // 2. Pencocokan dari Master ke LK
+            // 4. Pencocokan Master -> LK
             resultHTML += `
                 <div class="result-item ${masterMatchPercentage === 100 ? 'success' : (masterMatchPercentage >= 95 ? 'warning' : 'error')}">
-                    <div class="result-title">${masterMatchPercentage === 100 ? '✓' : (masterMatchPercentage >= 95 ? '⚠' : '✗')} Pencocokan dari Master ke LK</div>
+                    <div class="result-title">${masterMatchPercentage === 100 ? '✓' : (masterMatchPercentage >= 95 ? '⚠' : '✗')} Matching dari Master ke LK</div>
                     <div><strong>Berdasarkan idsls (14 digit pertama)</strong></div>
                     <div>${masterToLkMatch} dari ${totalMasterRecords} idsls di master ditemukan di LK (${masterMatchPercentage}%)</div>
                     ${masterUnmatched.length > 0 ? `
@@ -1293,56 +1380,41 @@
                 </div>
             `;
             
-            // 3. Ringkasan perbandingan
+            // 5. RINGKASAN PENGECOKAN - SESUAI FORMAT YANG DIINGINKAN
             resultHTML += `
-                <div class="result-item ${lkMatchPercentage === 100 && masterMatchPercentage === 100 && lkDuplicates.length === 0 && masterDuplicates.length === 0 ? 'success' : 'warning'}">
-                    <div class="result-title">📊 Ringkasan Pencocokan</div>
+                <div class="result-item ${lkMatchPercentage === 100 && masterMatchPercentage === 100 && lkDuplicates16.length === 0 && masterDuplicates14.length === 0 ? 'success' : 'warning'}">
+                    <div class="result-title">📊 Ringkasan Matching</div>
                     <div>Total records di LK: ${totalLkRecords}</div>
                     <div>Total records di Master: ${totalMasterRecords}</div>
+                    <br>
                     <div>Unique idsls (14 digit) di LK: ${lkIdslsSet.size}</div>
+                    <div>Unique idsubsls (16 digit) di LK: ${lkIdsubsls16Set.size}</div>
                     <div>Unique idsls (14 digit) di Master: ${masterIdslsSet.size}</div>
-                    <div>Duplikat idsubsls (16 digit) di LK: ${lkDuplicates.length}</div>
-                    <div>Duplikat idsls (14 digit) di Master: ${masterDuplicates.length}</div>
+                    <br>
+                    <div>Duplikat idsubsls (16 digit) di LK: ${lkDuplicates16.length}</div>
+                    <div>Duplikat idsls (14 digit) di Master: ${masterDuplicates14.length}</div>
+                    <br>
                     <div>Match LK → Master: ${lkToMasterMatch}/${totalLkRecords} (${lkMatchPercentage}%)</div>
                     <div>Match Master → LK: ${masterToLkMatch}/${totalMasterRecords} (${masterMatchPercentage}%)</div>
-                    ${lkDuplicates.length > 0 ? 
-                        `<div class="error">❌ Ditemukan ${lkDuplicates.length} idsubsls duplikat di file LK</div>` : 
-                        `<div class="success">✓ Tidak ada duplikat idsubsls di file LK</div>`
+                    <br>
+                    ${lkDuplicates16.length > 0 ? 
+                        `<div class="error">❌ Ditemukan ${lkDuplicates16.length} idsubsls duplikat di file LK</div>` : 
+                        `<div class="success">✓ Tidak ada idsubsls duplikat di file LK</div>`
                     }
-                    ${masterDuplicates.length > 0 ? 
-                        `<div class="error">❌ Ditemukan ${masterDuplicates.length} idsls duplikat di master wilayah</div>` : 
-                        `<div class="success">✓ Tidak ada duplikat idsls di master wilayah</div>`
+                    ${masterDuplicates14.length > 0 ? 
+                        `<div class="error">❌ Ditemukan ${masterDuplicates14.length} idsls duplikat di master wilayah</div>` : 
+                        `<div class="success">✓ Tidak ada idsls duplikat di master wilayah</div>`
                     }
-                    ${lkMatchPercentage !== 100 || masterMatchPercentage !== 100 ? 
-                        `<div class="warning">⚠ Ada ketidaksesuaian antara LK dan master wilayah</div>` : 
-                        `<div class="success">✓ Semua idsls cocok sempurna antara LK dan master wilayah</div>`
+                    ${lkMatchPercentage === 100 && masterMatchPercentage === 100 ? 
+                        `<div class="success">✓ Semua idsls cocok sempurna antara LK dan master wilayah</div>` : 
+                        `<div class="warning">⚠ Ada ketidaksesuaian antara LK dan master wilayah</div>`
                     }
-                </div>
-            `;
-            
-            // 4. Informasi tentang pencocokan
-            resultHTML += `
-                <div class="result-item info" style="background-color: #e8f4fc; border-left: 5px solid #3498db;">
-                    <div class="result-title">ℹ Informasi Pencocokan</div>
-                    <div><strong>Konsep:</strong></div>
-                    <div>• <strong>idsubsls</strong> = 16 digit (untuk pengecekan tipe data & cek duplikat di LK)</div>
-                    <div>• <strong>idsls</strong> = 14 digit pertama (untuk pencocokan master & cek duplikat di master)</div>
-                    <div><strong>Pengecekan Duplikat:</strong></div>
-                    <div>• <strong>LK</strong>: Dicek berdasarkan idsubsls lengkap (16 digit)</div>
-                    <div>• <strong>Master</strong>: Dicek berdasarkan idsls (14 digit pertama)</div>
-                    <div><strong>Contoh Duplikat di LK:</strong></div>
-                    <div>• "1101010001000100"</div>
-                    <div>• "1101010001000100" → <strong>DUPLIKAT</strong> (16 digit sama)</div>
-                    <div><strong>Contoh Duplikat di Master:</strong></div>
-                    <div>• "11010100010001"</div>
-                    <div>• "11010100010001" → <strong>DUPLIKAT</strong> (14 digit sama)</div>
-
                 </div>
             `;
             
             masterCheckDetails.innerHTML = resultHTML;
         }
-        
+
         // Fungsi untuk toggle detail error - VERSI FINAL
         function toggleErrorDetails(element) {
             // Cari parent result-item terdekat
