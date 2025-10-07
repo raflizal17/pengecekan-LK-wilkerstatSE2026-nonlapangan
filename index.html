@@ -389,7 +389,7 @@
             return [headers, ...dataRows];
         }
         
-        // FUNGSI BARU: Koreksi idsubsls 14 digit
+        // FUNGSI BARU: Koreksi idsubsls 14 digit - PERBAIKAN DI SINI
         function koreksiIdsubsls14Digit(jsonData) {
             if (!jsonData || jsonData.length < 2) return jsonData;
             
@@ -409,16 +409,39 @@
                 if (row.length > idsubslsIndex) {
                     const idsubsls = row[idsubslsIndex];
                     
+                    // PERBAIKAN: Cek jika idsubsls 14 digit dan kdsubsls tidak kosong
                     if (idsubsls && idsubsls.toString().length === 14 && /^\d+$/.test(idsubsls.toString())) {
-                        // Koreksi idsubsls: tambahkan '00' di akhir
-                        row[idsubslsIndex] = idsubsls.toString() + '00';
+                        let kdsubsls = '';
                         
-                        // Koreksi kdsubsls jika kolom ada
+                        // Cek jika kdsubsls ada dan tidak kosong
                         if (kdsubslsIndex !== -1 && row.length > kdsubslsIndex) {
-                            row[kdsubslsIndex] = '00';
+                            kdsubsls = row[kdsubslsIndex] ? row[kdsubslsIndex].toString() : '';
                         }
                         
-                        dikoreksiCount++;
+                        // PERBAIKAN: Jika kdsubsls tidak kosong, gabungkan saja
+                        if (kdsubsls && kdsubsls.trim() !== '') {
+                            // Pastikan kdsubsls 2 digit
+                            if (kdsubsls.length === 2 && /^\d+$/.test(kdsubsls)) {
+                                row[idsubslsIndex] = idsubsls.toString() + kdsubsls;
+                                dikoreksiCount++;
+                                console.log(`✅ Dikoreksi idsubsls: ${idsubsls} + ${kdsubsls} = ${idsubsls + kdsubsls}`);
+                            } else if (kdsubsls.length === 1 && /^\d+$/.test(kdsubsls)) {
+                                // Jika hanya 1 digit, tambahkan 0 di depan
+                                row[idsubslsIndex] = idsubsls.toString() + '0' + kdsubsls;
+                                dikoreksiCount++;
+                                console.log(`✅ Dikoreksi idsubsls: ${idsubsls} + 0${kdsubsls} = ${idsubsls + '0' + kdsubsls}`);
+                            }
+                        } else {
+                            // Jika kdsubsls kosong, baru tambahkan '00'
+                            row[idsubslsIndex] = idsubsls.toString() + '00';
+                            
+                            // Koreksi kdsubsls jika kolom ada
+                            if (kdsubslsIndex !== -1 && row.length > kdsubslsIndex) {
+                                row[kdsubslsIndex] = '00';
+                            }
+                            
+                            dikoreksiCount++;
+                        }
                     }
                 }
                 dataTerkoreksi.push(row);
@@ -508,7 +531,7 @@
                     const dataSebelumKoreksi = JSON.stringify(lkData);
                     correctedData = koreksiVariabelIdsls(lkData);
                     
-                    // KOREKSI IDSUBSLS 14 DIGIT - TETAP DILAKUKAN
+                    // KOREKSI IDSUBSLS 14 DIGIT - DENGAN PERBAIKAN BARU
                     correctedData = koreksiIdsubsls14Digit(correctedData);
                     const dataSetelahKoreksi = JSON.stringify(correctedData);
                     
@@ -857,8 +880,7 @@
                     <div class="result-item warning">
                         <div class="result-title">⚠ Ditemukan ${idsubsls14DigitCount} idsubsls 14 digit</div>
                         <div><strong>File yang sudah dikoreksi tersedia untuk di-download (tombol di bawah laporan)</strong></div>
-                        <div>idsubsls 14 digit akan dikoreksi menjadi 16 digit dengan menambahkan "00"</div>
-                        <div>kdsubsls akan diubah menjadi "00"</div>
+                        <div>idsubsls 14 digit akan dikoreksi menjadi 16 digit dengan menggabungkan idsubsls dan kdsubsls</div>
                         <div class="error-details" style="display: none;">
                             <strong>Detail idsubsls 14 digit:</strong><br>
                             ${idsubsls14DigitErrors.join('<br>')}
