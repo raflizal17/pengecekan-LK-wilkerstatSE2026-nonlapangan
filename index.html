@@ -325,9 +325,9 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script>
-        // Metadata variabel yang benar
+        // Metadata variabel yang benar - PERBAIKAN: frsid boleh kosong
         const correctMetadata = [
-            { variable: 'id', label: 'frs id', type: 'integer', required: true },
+            { variable: 'id', label: 'frs id', type: 'integer', required: false }, // PERBAIKAN: required: false
             { variable: 'semester', label: 'semester', type: 'character', required: true },
             { variable: 'idsubsls', label: 'idsubsls 16 digit karakter angka', type: 'character', required: true, length: 16 },
             { variable: 'nmsls', label: 'nama sls', type: 'character', required: true },
@@ -774,6 +774,10 @@
             let klasNonIntegerCount = 0;
             let klasNonIntegerErrors = [];
             
+            // PERBAIKAN: Variable untuk melacak frsid kosong
+            let frsidEmptyCount = 0;
+            let frsidEmptyDetails = [];
+            
             // Inisialisasi objek error dan warning details
             correctMetadata.forEach(metadata => {
                 errorDetails[metadata.variable] = [];
@@ -805,10 +809,18 @@
                         
                         // Cek kelengkapan data
                         if (value === null || value === undefined || value === '' || value === 'NULL') {
-                            if (metadata.required) {
+                            // PERBAIKAN: Untuk frsid, tampilkan warning bukan error
+                            if (metadata.required && metadata.variable !== 'id') {
                                 errorDetails[metadata.variable].push(`Baris ${rowNum}: Data kosong`);
                                 totalErrors++;
+                            } else if (metadata.variable === 'id') {
+                                // PERBAIKAN: frsid kosong hanya warning
+                                warningDetails[metadata.variable].push(`Baris ${rowNum}: Data kosong (opsional)`);
+                                totalWarnings++;
+                                frsidEmptyCount++;
+                                frsidEmptyDetails.push(`Baris ${rowNum}: frsid kosong`);
                             } else {
+                                // Untuk variabel opsional lainnya
                                 if (metadata.variable === 'nama_ketua') {
                                     warningDetails[metadata.variable].push(`Baris ${rowNum}: Data kosong (opsional)`);
                                     totalWarnings++;
@@ -908,9 +920,13 @@
                         }
                     } else {
                         // Jika baris tidak memiliki kolom ini (row length pendek)
-                        if (metadata.required) {
+                        if (metadata.required && metadata.variable !== 'id') {
                             errorDetails[metadata.variable].push(`Baris ${rowNum}: Kolom tidak ada dalam baris ini`);
                             totalErrors++;
+                        } else if (metadata.variable === 'id') {
+                            // PERBAIKAN: frsid kosong hanya warning
+                            warningDetails[metadata.variable].push(`Baris ${rowNum}: Kolom tidak ada dalam baris ini (opsional)`);
+                            totalWarnings++;
                         }
                     }
                 });
@@ -977,15 +993,18 @@
                             ` : ''}
                         </div>
                     `;
-                } else if (warnings.length > 0 && metadata.variable === 'nama_ketua') {
-                    dataTypeCheckDetails.innerHTML += `
-                        <div class="result-item warning">
-                            <div class="result-title">⚠ ${metadata.variable} - ${metadata.label}</div>
-                            <div>Terdapat ${warnings.length} data kosong (opsional)</div>
-                            <div class="error-details" style="display: none;">${warnings.join('<br>')}</div>
-                            <span class="toggle-details" onclick="toggleErrorDetails(this)">Tampilkan detail</span>
-                        </div>
-                    `;
+                } else if (warnings.length > 0) {
+                    // PERBAIKAN: Tampilkan warning untuk frsid dan nama_ketua
+                    if (metadata.variable === 'id' || metadata.variable === 'nama_ketua') {
+                        dataTypeCheckDetails.innerHTML += `
+                            <div class="result-item warning">
+                                <div class="result-title">⚠ ${metadata.variable} - ${metadata.label}</div>
+                                <div>Terdapat ${warnings.length} data kosong (opsional)</div>
+                                <div class="error-details" style="display: none;">${warnings.join('<br>')}</div>
+                                <span class="toggle-details" onclick="toggleErrorDetails(this)">Tampilkan detail</span>
+                            </div>
+                        `;
+                    }
                 } else {
                     dataTypeCheckDetails.innerHTML += `
                         <div class="result-item success">
@@ -1004,6 +1023,7 @@
                     ${idslsDetected ? `<div>Termasuk variabel 'idsls' yang akan dikoreksi menjadi 'idsubsls'</div>` : ''}
                     ${idsubsls14DigitCount > 0 ? `<div>Termasuk ${idsubsls14DigitCount} idsubsls 14 digit yang dapat dikoreksi</div>` : ''}
                     ${klasNonIntegerCount > 0 ? `<div>Termasuk ${klasNonIntegerCount} data klas yang akan dikonversi ke integer</div>` : ''}
+                    ${frsidEmptyCount > 0 ? `<div>Termasuk ${frsidEmptyCount} frsid kosong (diperbolehkan)</div>` : ''}
                 </div>
             `;
         }
