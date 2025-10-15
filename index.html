@@ -325,7 +325,7 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script>
-        // Metadata variabel yang benar - PERBAIKAN: frsid boleh kosong
+        // Metadata variabel yang benar - PERBAIKAN: id boleh kosong
         const correctMetadata = [
             { variable: 'id', label: 'frs id', type: 'integer', required: false }, // PERBAIKAN: required: false
             { variable: 'semester', label: 'semester', type: 'character', required: true },
@@ -367,6 +367,9 @@
         
         // VARIABEL BARU: Untuk melacak apakah ada variabel idsls yang dikoreksi
         let idslsCorrected = false;
+
+        // VARIABEL BARU: Untuk mapping master
+        let masterMapping = new Map();
         
         // FUNGSI BARU: Koreksi variabel idsls menjadi idsubsls
         function koreksiVariabelIdsls(jsonData) {
@@ -493,6 +496,130 @@
             return [headers, ...dataTerkoreksi];
         }
 
+        // FUNGSI BARU: Autofill ID kosong berdasarkan matching dengan master - VERSI DIPERBAIKI
+        function autofillIdFromMaster(lkData) {
+            if (!lkData || lkData.length < 2 || !masterWilayahData || masterWilayahData.length < 2) {
+                return lkData;
+            }
+            
+            const lkHeaders = lkData[0];
+            const masterHeaders = masterWilayahData[0];
+            
+            // Cari kolom id di LK dan master
+            const lkIdIndex = lkHeaders.indexOf('id');
+            const masterIdIndex = masterHeaders.indexOf('id');
+            
+            // Jika tidak ada kolom id di LK atau master, return data asli
+            if (lkIdIndex === -1 || masterIdIndex === -1) {
+                console.log("Kolom id tidak ditemukan di LK atau master");
+                return lkData;
+            }
+            
+            // Cari kolom untuk matching (idsubsls/idsls)
+            let lkIdsubslsIndex = lkHeaders.indexOf('idsubsls');
+            if (lkIdsubslsIndex === -1) {
+                lkIdsubslsIndex = lkHeaders.indexOf('idsls');
+            }
+            
+            let masterIdsubslsIndex = masterHeaders.indexOf('idsubsls');
+            if (masterIdsubslsIndex === -1) {
+                masterIdsubslsIndex = masterHeaders.indexOf('idsls');
+            }
+            
+            if (lkIdsubslsIndex === -1 || masterIdsubslsIndex === -1) {
+                console.log("Kolom idsubsls/idsls tidak ditemukan untuk matching");
+                return lkData;
+            }
+            
+            // Buat mapping dari master: idsubsls -> id
+            masterMapping = new Map();
+            for (let i = 1; i < masterWilayahData.length; i++) {
+                const masterRow = masterWilayahData[i];
+                if (masterRow.length > Math.max(masterIdsubslsIndex, masterIdIndex)) {
+                    const idsubsls = masterRow[masterIdsubslsIndex];
+                    const id = masterRow[masterIdIndex];
+                    
+                    if (idsubsls && id) {
+                        // Ambil 14 digit pertama untuk konsistensi matching
+                        const idsubsls14 = idsubsls.toString().substring(0, 14);
+                        masterMapping.set(idsubsls14, id);
+                    }
+                }
+            }
+            
+            console.log(`Mapping master berhasil dibuat: ${masterMapping.size} entri`);
+            
+            // HITUNG HANYA ID KOSONG DI LK SAJA
+            const dataRows = lkData.slice(1);
+            let totalIdKosongDiLK = 0;
+            let totalBisaAutofill = 0;
+            const autofillDetails = [];
+            const tidakBisaAutofillDetails = [];
+            
+            // HITUNG PERTAMA: Hanya ID kosong di LK
+            for (let i = 0; i < dataRows.length; i++) {
+                const row = dataRows[i];
+                if (row.length > lkIdIndex) {
+                    const currentId = row[lkIdIndex];
+                    // Hitung hanya yang kosong di LK
+                    if (!currentId || currentId.toString().trim() === '') {
+                        totalIdKosongDiLK++;
+                    }
+                }
+            }
+            
+            console.log(`ℹ Total id kosong di LK: ${totalIdKosongDiLK}`);
+            
+            // PROSES AUTOFILL
+            const updatedDataRows = dataRows.map((row, rowIndex) => {
+                const newRow = [...row];
+                const rowNum = rowIndex + 2;
+                
+                if (newRow.length > Math.max(lkIdsubslsIndex, lkIdIndex)) {
+                    const currentId = newRow[lkIdIndex];
+                    const idsubsls = newRow[lkIdsubslsIndex];
+                    
+                    // Jika id kosong di LK
+                    if (!currentId || currentId.toString().trim() === '') {
+                        // Cek apakah bisa diautofill dari master
+                        if (idsubsls) {
+                            const idsubsls14 = idsubsls.toString().substring(0, 14);
+                            
+                            if (masterMapping.has(idsubsls14)) {
+                                const matchedId = masterMapping.get(idsubsls14);
+                                newRow[lkIdIndex] = matchedId;
+                                totalBisaAutofill++;
+                                autofillDetails.push(`Baris ${rowNum}: ${idsubsls} -> ${matchedId}`);
+                                console.log(`✅ Autofill id: ${idsubsls14} -> ${matchedId}`);
+                            } else {
+                                // Catat yang tidak bisa diautofill
+                                tidakBisaAutofillDetails.push(`Baris ${rowNum}: ${idsubsls} (tidak ditemukan di master)`);
+                            }
+                        } else {
+                            // Catat yang tidak punya idsubsls
+                            tidakBisaAutofillDetails.push(`Baris ${rowNum}: tidak ada idsubsls`);
+                        }
+                    }
+                }
+                
+                return newRow;
+            });
+            
+            // SIMPAN DATA UNTUK LAPORAN
+            window.autofillReport = {
+                totalIdKosongDiLK: totalIdKosongDiLK,
+                totalBisaAutofill: totalBisaAutofill,
+                autofillDetails: autofillDetails,
+                tidakBisaAutofillDetails: tidakBisaAutofillDetails
+            };
+            
+            if (totalBisaAutofill > 0) {
+                console.log(`✅ Berhasil autofill ${totalBisaAutofill} id kosong dari master`);
+            }
+            
+            return [lkHeaders, ...updatedDataRows];
+        }
+
         document.getElementById('checkButton').addEventListener('click', function() {
             const lkFile = document.getElementById('lkFile').files[0];
             const masterFile = document.getElementById('masterFile').files[0];
@@ -575,6 +702,9 @@
                     
                     // KOREKSI TIPE DATA KLAS - FUNGSI BARU
                     correctedData = koreksiTipeDataKlas(correctedData);
+                    
+                    // AUTOFILL ID DARI MASTER - TAMBAHAN BARU
+                    correctedData = autofillIdFromMaster(correctedData);
                     
                     const dataSetelahKoreksi = JSON.stringify(correctedData);
                     
@@ -774,9 +904,11 @@
             let klasNonIntegerCount = 0;
             let klasNonIntegerErrors = [];
             
-            // PERBAIKAN: Variable untuk melacak frsid kosong
-            let frsidEmptyCount = 0;
-            let frsidEmptyDetails = [];
+            // GUNAKAN DATA YANG SUDAH DIHITUNG DENGAN AKURAT
+            let idEmptyCount = window.autofillReport ? window.autofillReport.totalIdKosongDiLK : 0;
+            let idAutofillableCount = window.autofillReport ? window.autofillReport.totalBisaAutofill : 0;
+            let idAutofillableDetails = window.autofillReport ? window.autofillReport.autofillDetails : [];
+            let idTidakBisaAutofillDetails = window.autofillReport ? window.autofillReport.tidakBisaAutofillDetails : [];
             
             // Inisialisasi objek error dan warning details
             correctMetadata.forEach(metadata => {
@@ -809,16 +941,14 @@
                         
                         // Cek kelengkapan data
                         if (value === null || value === undefined || value === '' || value === 'NULL') {
-                            // PERBAIKAN: Untuk frsid, tampilkan warning bukan error
+                            // PERBAIKAN: Untuk id, tampilkan warning bukan error
                             if (metadata.required && metadata.variable !== 'id') {
                                 errorDetails[metadata.variable].push(`Baris ${rowNum}: Data kosong`);
                                 totalErrors++;
                             } else if (metadata.variable === 'id') {
-                                // PERBAIKAN: frsid kosong hanya warning
+                                // PERBAIKAN: id kosong hanya warning
                                 warningDetails[metadata.variable].push(`Baris ${rowNum}: Data kosong (opsional)`);
                                 totalWarnings++;
-                                frsidEmptyCount++;
-                                frsidEmptyDetails.push(`Baris ${rowNum}: frsid kosong`);
                             } else {
                                 // Untuk variabel opsional lainnya
                                 if (metadata.variable === 'nama_ketua') {
@@ -924,7 +1054,7 @@
                             errorDetails[metadata.variable].push(`Baris ${rowNum}: Kolom tidak ada dalam baris ini`);
                             totalErrors++;
                         } else if (metadata.variable === 'id') {
-                            // PERBAIKAN: frsid kosong hanya warning
+                            // PERBAIKAN: id kosong hanya warning
                             warningDetails[metadata.variable].push(`Baris ${rowNum}: Kolom tidak ada dalam baris ini (opsional)`);
                             totalWarnings++;
                         }
@@ -975,6 +1105,43 @@
                 `;
             }
             
+            // TAMPILKAN INFO AUTOFILL ID - VERSI DIPERBAIKI
+            if (idEmptyCount > 0) {
+                dataTypeCheckDetails.innerHTML += `
+                    <div class="result-item ${idAutofillableCount > 0 ? 'warning' : 'info'}">
+                        <div class="result-title">${idAutofillableCount > 0 ? '⚠' : 'ℹ'} Status Autofill FRS-ID</div>
+                        <div><strong>File yang sudah dikoreksi tersedia untuk di-download (tombol di bawah laporan)</strong></div>
+                        <div>Terdapat <strong>${idEmptyCount} frs-id kosong di LK</strong></div>
+                        ${idAutofillableCount > 0 ? 
+                            `<div><strong>${idAutofillableCount} frs-id dapat diautofill dari master</strong></div>
+                             ${idAutofillableCount < idEmptyCount ? 
+                                `<div>${idEmptyCount - idAutofillableCount} frs-id tidak dapat diautofill (tidak ada di master)</div>` 
+                                : ''
+                             }
+                             <div class="error-details" style="display: none;">
+                                 <strong>Detail autofill frs-id dari master:</strong><br>
+                                 ${idAutofillableDetails.join('<br>')}
+                                 ${idTidakBisaAutofillDetails.length > 0 ? 
+                                    `<br><br><strong>frs-id yang tidak dapat diautofill dari master:</strong><br>
+                                     ${idTidakBisaAutofillDetails.join('<br>')}` 
+                                    : ''
+                                 }
+                             </div>
+                             <span class="toggle-details" onclick="toggleErrorDetails(this)">Tampilkan detail</span>` : 
+                            `<div>Tidak ada frs-id yang dapat diautofill dari master</div>
+                             ${idTidakBisaAutofillDetails.length > 0 ? 
+                                `<div class="error-details" style="display: none;">
+                                     <strong>Detail frs-id yang tidak dapat diautofill:</strong><br>
+                                     ${idTidakBisaAutofillDetails.join('<br>')}
+                                 </div>
+                                 <span class="toggle-details" onclick="toggleErrorDetails(this)">Tampilkan detail</span>`
+                                : ''
+                             }`
+                        }
+                    </div>
+                `;
+            }
+            
             // Tampilkan hasil pengecekan untuk setiap variabel
             correctMetadata.forEach(metadata => {
                 const errors = errorDetails[metadata.variable];
@@ -994,7 +1161,7 @@
                         </div>
                     `;
                 } else if (warnings.length > 0) {
-                    // PERBAIKAN: Tampilkan warning untuk frsid dan nama_ketua
+                    // PERBAIKAN: Tampilkan warning untuk id dan nama_ketua
                     if (metadata.variable === 'id' || metadata.variable === 'nama_ketua') {
                         dataTypeCheckDetails.innerHTML += `
                             <div class="result-item warning">
@@ -1023,7 +1190,7 @@
                     ${idslsDetected ? `<div>Termasuk variabel 'idsls' yang akan dikoreksi menjadi 'idsubsls'</div>` : ''}
                     ${idsubsls14DigitCount > 0 ? `<div>Termasuk ${idsubsls14DigitCount} idsubsls 14 digit yang dapat dikoreksi</div>` : ''}
                     ${klasNonIntegerCount > 0 ? `<div>Termasuk ${klasNonIntegerCount} data klas yang akan dikonversi ke integer</div>` : ''}
-                    ${frsidEmptyCount > 0 ? `<div>Termasuk ${frsidEmptyCount} frsid kosong (diperbolehkan)</div>` : ''}
+                    ${idEmptyCount > 0 ? `<div>Termasuk ${idEmptyCount} id kosong (${idAutofillableCount} dapat diautofill)</div>` : ''}
                 </div>
             `;
         }
