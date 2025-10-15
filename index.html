@@ -1194,7 +1194,7 @@
                 </div>
             `;
         }
-        
+                
         function checkAnomalies(jsonData) {
             const anomalyCheckDetails = document.getElementById('anomalyCheckDetails');
             anomalyCheckDetails.innerHTML = '';
@@ -1216,6 +1216,7 @@
             const bttIndex = headers.indexOf('btt');
             const bttkIndex = headers.indexOf('bttk');
             const bbttNonusahaIndex = headers.indexOf('bbtt_nonusaha');
+            const dominanIndex = headers.indexOf('dominan');
             
             // Cek jika ada kolom yang tidak ditemukan
             const requiredColumns = [
@@ -1225,7 +1226,8 @@
                 { name: 'kk', index: kkIndex },
                 { name: 'btt', index: bttIndex },
                 { name: 'bttk', index: bttkIndex },
-                { name: 'bbtt_nonusaha', index: bbttNonusahaIndex }
+                { name: 'bbtt_nonusaha', index: bbttNonusahaIndex },
+                { name: 'dominan', index: dominanIndex }
             ];
             
             const missingColumns = requiredColumns.filter(col => col.index === -1);
@@ -1242,10 +1244,11 @@
             
             let anomaly1Errors = []; // usaha >= bku
             let anomaly2Errors = []; // muatan >= max(kk, btt) + bttk + bbtt_nonusaha + usaha
-            let anomaly3Errors = []; // muatan > 240
+            let anomaly3Warnings = []; // muatan > 240 dengan dominan = 6 (diperbolehkan)
+            let anomaly3Errors = []; // muatan > 240 dengan dominan != 6 (tidak diperbolehkan)
             
             dataRows.forEach((row, index) => {
-                if (row.length > Math.max(muatanIndex, usahaIndex, bkuIndex, kkIndex, bttIndex, bttkIndex, bbttNonusahaIndex)) {
+                if (row.length > Math.max(muatanIndex, usahaIndex, bkuIndex, kkIndex, bttIndex, bttkIndex, bbttNonusahaIndex, dominanIndex)) {
                     const muatan = parseInt(row[muatanIndex]) || 0;
                     const usaha = parseInt(row[usahaIndex]) || 0;
                     const bku = parseInt(row[bkuIndex]) || 0;
@@ -1253,6 +1256,7 @@
                     const btt = parseInt(row[bttIndex]) || 0;
                     const bttk = parseInt(row[bttkIndex]) || 0;
                     const bbttNonusaha = parseInt(row[bbttNonusahaIndex]) || 0;
+                    const dominan = parseInt(row[dominanIndex]) || 0;
                     
                     // Anomali 1: usaha >= bku
                     if (usaha < bku) {
@@ -1266,9 +1270,15 @@
                         anomaly2Errors.push(`Baris ${index + 2}: muatan (${muatan}) < ${maxKKorBTT} + ${bttk} + ${bbttNonusaha} + ${usaha} = ${total}`);
                     }
                     
-                    // Anomali 3: muatan > 240
+                    // Anomali 3: muatan > 240 - PERBAIKAN LOGIKA
                     if (muatan > 240) {
-                        anomaly3Errors.push(`Baris ${index + 2}: muatan (${muatan}) > 240`);
+                        if (dominan === 6) {
+                            // Jika dominan = 6, hanya warning (diperbolehkan)
+                            anomaly3Warnings.push(`Baris ${index + 2}: muatan (${muatan}) > 240 (diperbolehkan karena kode muatan dominan = 6)`);
+                        } else {
+                            // Jika dominan != 6, error (tidak diperbolehkan)
+                            anomaly3Errors.push(`Baris ${index + 2}: muatan (${muatan}) > 240 (tidak diperbolehkan karena kode muatan dominan = ${dominan}, bukan 6)`);
+                        }
                     }
                 }
             });
@@ -1291,15 +1301,55 @@
                         <span class="toggle-details" onclick="toggleErrorDetails(this)">Tampilkan detail</span>
                     ` : ''}
                 </div>
-                <div class="result-item ${anomaly3Errors.length === 0 ? 'success' : 'warning'}">
-                    <div class="result-title">${anomaly3Errors.length === 0 ? '✓' : '⚠'} muatan > 240</div>
-                    <div>${anomaly3Errors.length === 0 ? 'Tidak ada record dengan muatan > 240' : `Terdapat ${anomaly3Errors.length} record dengan muatan > 240`}</div>
-                    ${anomaly3Errors.length > 0 ? `
-                        <div class="error-details" style="display: none;">${anomaly3Errors.join('<br>')}</div>
-                        <span class="toggle-details" onclick="toggleErrorDetails(this)">Tampilkan detail</span>
-                    ` : ''}
-                </div>
             `;
+            
+            // TAMPILKAN HASIL VALIDASI MUATAN > 240 - PERBAIKAN
+            if (anomaly3Errors.length > 0 || anomaly3Warnings.length > 0) {
+                let statusClass = '';
+                let statusIcon = '';
+                let statusTitle = '';
+                let statusMessage = '';
+                
+                if (anomaly3Errors.length > 0) {
+                    statusClass = 'error';
+                    statusIcon = '✗';
+                    statusTitle = 'muatan > 240 dengan kode muatan dominan selain 6';
+                    statusMessage = `Terdapat ${anomaly3Errors.length} record dengan muatan > 240 dan kode muatan dominan selain 6`;
+                } else {
+                    statusClass = 'warning';
+                    statusIcon = '⚠';
+                    statusTitle = 'muatan > 240 dengan dominan = 6';
+                    statusMessage = `Terdapat ${anomaly3Warnings.length} record dengan muatan > 240 (diperbolehkan karena dominan = 6)`;
+                }
+                
+                anomalyCheckDetails.innerHTML += `
+                    <div class="result-item ${statusClass}">
+                        <div class="result-title">${statusIcon} ${statusTitle}</div>
+                        <div>${statusMessage}</div>
+                        ${anomaly3Errors.length > 0 ? `
+                            <div class="error-details" style="display: none;">
+                                <strong>Detail muatan > 240 dengan kode muatan dominan selain 6:</strong><br>
+                                ${anomaly3Errors.join('<br>')}
+                            </div>
+                            <span class="toggle-details" onclick="toggleErrorDetails(this)">Tampilkan detail</span>
+                        ` : ''}
+                        ${anomaly3Warnings.length > 0 && anomaly3Errors.length === 0 ? `
+                            <div class="error-details" style="display: none;">
+                                <strong>Detail muatan > 240 dengan dominan = 6 (diperbolehkan):</strong><br>
+                                ${anomaly3Warnings.join('<br>')}
+                            </div>
+                            <span class="toggle-details" onclick="toggleErrorDetails(this)">Tampilkan detail</span>
+                        ` : ''}
+                    </div>
+                `;
+            } else {
+                anomalyCheckDetails.innerHTML += `
+                    <div class="result-item success">
+                        <div class="result-title">✓ muatan > 240</div>
+                        <div>Tidak ada record dengan muatan > 240</div>
+                    </div>
+                `;
+            }
         }
                 
         function checkMasterWilayah(lkData) {
